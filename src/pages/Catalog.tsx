@@ -4,15 +4,16 @@ import {
   Star, ShoppingCart, X, ZapOff, Flame, Layers, 
   Sparkles, TrendingUp
 } from 'lucide-react';
-import type { Product } from '../types';
+import type { Product, Order } from '../types';
 
 interface CatalogProps {
   products: Product[];
+  orders: Order[]; // Tambahkan orders ke props untuk menghitung popularitas
   onBack: () => void;
   onOrder: (product: Product) => void;
 }
 
-export const Catalog = ({ products, onBack, onOrder }: CatalogProps) => {
+export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [currentBanner, setCurrentBanner] = useState(0);
@@ -51,10 +52,26 @@ export const Catalog = ({ products, onBack, onOrder }: CatalogProps) => {
     return () => clearInterval(timer);
   }, [banners.length]);
 
-  // Logic: Top Picks (Simulasi berdasarkan harga tertinggi)
+  // LOGIKA BARU: Top Picks berdasarkan jumlah pesanan terbanyak
   const topPicks = useMemo(() => {
-    return [...products].sort((a, b) => b.price - a.price).slice(0, 4);
-  }, [products]);
+    // 1. Hitung berapa kali tiap produk dipesan
+    const orderCounts = orders.reduce((acc, order) => {
+      acc[order.id_product] = (acc[order.id_product] || 0) + order.quantity;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // 2. Urutkan produk berdasarkan jumlah pesanan tersebut
+    return [...products]
+      .sort((a, b) => {
+        const countA = orderCounts[a.id] || 0;
+        const countB = orderCounts[b.id] || 0;
+        
+        // Jika jumlah order sama, urutkan berdasarkan harga (opsional)
+        if (countB === countA) return b.price - a.price;
+        return countB - countA;
+      })
+      .slice(0, 4);
+  }, [products, orders]);
 
   // Logic: Filter & Grouping by Category
   const groupedProducts = useMemo(() => {

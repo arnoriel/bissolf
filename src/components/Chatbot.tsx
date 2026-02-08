@@ -69,7 +69,8 @@ export const Chatbot = () => {
       2. PEMESANAN: Jika user ingin membeli, minta data berikut secara bertahap atau sekaligus:
          - Nama
          - No HP
-         - Alamat Lengkap (Lokasi pengiriman)
+         - Alamat Lengkap. 
+           **INSTRUKSI KHUSUS ALAMAT:** Saat meminta alamat, kamu WAJIB meminta user menuliskan dengan format lengkap: "Nama Jalan, Nama Kelurahan, Nama Kecamatan, Nama Kota/Kabupaten, Nama Pulau, Kode Pos".
          - Jumlah Pesanan
          
          SETELAH semua data (Nama, HP, Alamat, Jumlah) lengkap, kamu WAJIB memberikan konfirmasi ringkas dan MENGELUARKAN JSON:
