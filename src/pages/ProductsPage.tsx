@@ -13,9 +13,17 @@ import {
   Layers as LayersIcon,
   DollarSign as MoneyIcon,
   Box as BoxIcon,
-  Image as ImageIconAlt
+  Image as ImageIconAlt,
+  Sliders as SlidersIcon,
+  List as ListIcon
 } from 'lucide-react';
-import type { Product } from '../types';
+import type { Product, ProductVariant, VariantOption } from '../types';
+
+// Interface lokal untuk form (mengikuti struktur types.ts yang baru)
+interface FormVariant {
+  name: string;
+  options: VariantOption[];
+}
 
 export const ProductsPage = () => {
   const { products, addProduct, updateProduct, deleteProduct } = useStore();
@@ -27,8 +35,8 @@ export const ProductsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
-  // Form State
-  const [formData, setFormData] = useState<Partial<Product>>({
+  // Form State - variants sekarang pakai struktur baru
+  const [formData, setFormData] = useState<Partial<Product> & { variants: FormVariant[] }>({
     product_name: '',
     product_sku: '',
     category: '',
@@ -36,7 +44,8 @@ export const ProductsPage = () => {
     price: 0,
     stocks: 0,
     description: '',
-    image_url: ''
+    image_url: '',
+    variants: []
   });
 
   // 1. Search Logic
@@ -63,7 +72,19 @@ export const ProductsPage = () => {
   const openModal = (product?: Product) => {
     if (product) {
       setEditingProduct(product);
-      setFormData(product);
+      // Mapping variants ke format form (tambahkan image jika belum ada)
+      const mappedVariants = (product.variants || []).map(v => ({
+        name: v.name,
+        options: v.options.map(opt => 
+          typeof opt === 'string' 
+            ? { name: opt, image: undefined } 
+            : { name: opt.name, image: opt.image }
+        )
+      }));
+      setFormData({
+        ...product,
+        variants: mappedVariants
+      });
     } else {
       setEditingProduct(null);
       setFormData({
@@ -74,19 +95,77 @@ export const ProductsPage = () => {
         price: 0,
         stocks: 0,
         description: '',
-        image_url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500'
+        image_url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500',
+        variants: []
       });
     }
     setIsModalOpen(true);
   };
 
+  // ────────────────────────────────────────────────
+  // Logic CRUD Variant di dalam Form (versi baru)
+  // ────────────────────────────────────────────────
+
+  const addVariantField = () => {
+    setFormData(prev => ({
+      ...prev,
+      variants: [...(prev.variants || []), { name: '', options: [] }]
+    }));
+  };
+
+  const removeVariantField = (index: number) => {
+    const newVariants = [...(formData.variants || [])];
+    newVariants.splice(index, 1);
+    setFormData({ ...formData, variants: newVariants });
+  };
+
+  const updateVariantName = (index: number, name: string) => {
+    const newVariants = [...(formData.variants || [])];
+    newVariants[index].name = name;
+    setFormData({ ...formData, variants: newVariants });
+  };
+
+  const addOptionToVariant = (variantIndex: number) => {
+    const newVariants = [...(formData.variants || [])];
+    newVariants[variantIndex].options.push({ name: '', image: undefined });
+    setFormData({ ...formData, variants: newVariants });
+  };
+
+  const updateOptionName = (variantIndex: number, optionIndex: number, name: string) => {
+    const newVariants = [...(formData.variants || [])];
+    newVariants[variantIndex].options[optionIndex].name = name;
+    setFormData({ ...formData, variants: newVariants });
+  };
+
+  const updateOptionImage = (variantIndex: number, optionIndex: number, imageUrl: string) => {
+    const newVariants = [...(formData.variants || [])];
+    newVariants[variantIndex].options[optionIndex].image = imageUrl || undefined;
+    setFormData({ ...formData, variants: newVariants });
+  };
+
+  const removeOptionFromVariant = (variantIndex: number, optionIndex: number) => {
+    const newVariants = [...(formData.variants || [])];
+    newVariants[variantIndex].options.splice(optionIndex, 1);
+    setFormData({ ...formData, variants: newVariants });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Bersihkan variant kosong / tanpa nama
+    const cleanedVariants: ProductVariant[] = (formData.variants || [])
+      .filter(v => v.name.trim() !== '')
+      .map(v => ({
+        name: v.name.trim(),
+        options: v.options.filter(o => o.name.trim() !== '')
+      }));
+
     const finalData = {
       ...formData,
       id: editingProduct ? editingProduct.id : Date.now().toString(),
       price: Number(formData.price),
-      stocks: Number(formData.stocks)
+      stocks: Number(formData.stocks),
+      variants: cleanedVariants.length > 0 ? cleanedVariants : undefined,
     } as Product;
 
     if (editingProduct) {
@@ -140,7 +219,7 @@ export const ProductsPage = () => {
             <thead>
               <tr className="bg-gray-50/50 border-b border-gray-100 text-gray-400 text-[10px] uppercase tracking-widest font-black">
                 <th className="p-6">Produk</th>
-                <th className="p-6">Kategori</th>
+                <th className="p-6">Kategori & Varian</th>
                 <th className="p-6">Harga</th>
                 <th className="p-6">Stok</th>
                 <th className="p-6 text-right">Aksi</th>
@@ -159,7 +238,18 @@ export const ProductsPage = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="p-6 font-semibold text-gray-500">{product.category}</td>
+                    <td className="p-6">
+                      <p className="font-semibold text-gray-500 mb-1">{product.category}</p>
+                      {product.variants && product.variants.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {product.variants.map((v, i) => (
+                            <span key={i} className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded border border-gray-200 font-medium">
+                              {v.name}: {v.options.length} opsi
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </td>
                     <td className="p-6 font-black text-gray-900">Rp {product.price.toLocaleString()}</td>
                     <td className="p-6">
                       <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${product.stocks < 5 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
@@ -231,7 +321,7 @@ export const ProductsPage = () => {
                   </label>
                   <input 
                     required 
-                    value={formData.product_name} 
+                    value={formData.product_name || ''} 
                     onChange={e => setFormData({...formData, product_name: e.target.value})} 
                     className="w-full bg-gray-50 border-none rounded-2xl px-5 py-3 focus:ring-2 focus:ring-blue-500 transition outline-none text-sm font-medium" 
                     placeholder="Contoh: Kopi Gayo Premium" 
@@ -245,7 +335,7 @@ export const ProductsPage = () => {
                   </label>
                   <input 
                     required 
-                    value={formData.product_sku} 
+                    value={formData.product_sku || ''} 
                     onChange={e => setFormData({...formData, product_sku: e.target.value})} 
                     className="w-full bg-gray-50 border-none rounded-2xl px-5 py-3 focus:ring-2 focus:ring-blue-500 transition outline-none text-sm font-medium" 
                   />
@@ -258,7 +348,7 @@ export const ProductsPage = () => {
                   </label>
                   <input 
                     required 
-                    value={formData.category} 
+                    value={formData.category || ''} 
                     onChange={e => setFormData({...formData, category: e.target.value})} 
                     className="w-full bg-gray-50 border-none rounded-2xl px-5 py-3 focus:ring-2 focus:ring-blue-500 transition outline-none text-sm font-medium" 
                     placeholder="Elektronik, Kopi, dll" 
@@ -273,7 +363,7 @@ export const ProductsPage = () => {
                   <input 
                     required 
                     type="number" 
-                    value={formData.price} 
+                    value={formData.price ?? 0} 
                     onChange={e => setFormData({...formData, price: Number(e.target.value)})} 
                     className="w-full bg-gray-50 border-none rounded-2xl px-5 py-3 focus:ring-2 focus:ring-blue-500 transition outline-none text-sm font-medium" 
                   />
@@ -287,7 +377,7 @@ export const ProductsPage = () => {
                   <input 
                     required 
                     type="number" 
-                    value={formData.stocks} 
+                    value={formData.stocks ?? 0} 
                     onChange={e => setFormData({...formData, stocks: Number(e.target.value)})} 
                     className="w-full bg-gray-50 border-none rounded-2xl px-5 py-3 focus:ring-2 focus:ring-blue-500 transition outline-none text-sm font-medium" 
                   />
@@ -296,22 +386,105 @@ export const ProductsPage = () => {
                 {/* IMAGE URL */}
                 <div className="md:col-span-2 space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                    <ImageIconAlt size={14}/> Image URL
+                    <ImageIconAlt size={14}/> Image URL (Produk Utama)
                   </label>
                   <input 
-                    value={formData.image_url} 
+                    value={formData.image_url || ''} 
                     onChange={e => setFormData({...formData, image_url: e.target.value})} 
                     className="w-full bg-gray-50 border-none rounded-2xl px-5 py-3 focus:ring-2 focus:ring-blue-500 transition outline-none text-sm font-medium" 
                     placeholder="https://images.unsplash.com/..."
                   />
                 </div>
 
+                {/* ──────────────────────────────────────────────── */}
+                {/* VARIANT SECTION - SUPPORT GAMBAR PER OPSI */}
+                {/* ──────────────────────────────────────────────── */}
+                <div className="md:col-span-2 space-y-5 pt-6 border-t border-dashed border-gray-200">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                      <SlidersIcon size={14}/> Varian Produk
+                    </label>
+                    <button 
+                      type="button" 
+                      onClick={addVariantField}
+                      className="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-100 transition flex items-center gap-1"
+                    >
+                      <PlusIcon size={14} /> Tambah Varian
+                    </button>
+                  </div>
+                  
+                  {(formData.variants || []).length === 0 && (
+                    <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                      <p className="text-sm text-gray-400">Belum ada varian (contoh: Warna, Ukuran, Rasa, Gilingan)</p>
+                    </div>
+                  )}
+
+                  {(formData.variants || []).map((variant, vIndex) => (
+                    <div key={vIndex} className="bg-gray-50 p-4 rounded-2xl border border-gray-200 relative group">
+                      <div className="flex items-center gap-3 mb-3">
+                        <input 
+                          placeholder="Nama varian (contoh: Warna)" 
+                          value={variant.name}
+                          onChange={(e) => updateVariantName(vIndex, e.target.value)}
+                          className="flex-1 bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                        <button 
+                          type="button"
+                          onClick={() => addOptionToVariant(vIndex)}
+                          className="bg-blue-100 text-blue-700 px-3 py-2 rounded-xl text-xs font-bold hover:bg-blue-200 transition"
+                        >
+                          + Opsi
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => removeVariantField(vIndex)}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition"
+                        >
+                          <TrashIcon size={16} />
+                        </button>
+                      </div>
+
+                      {/* List Opsi + Gambar */}
+                      <div className="space-y-2 pl-4 border-l-2 border-gray-200 ml-2">
+                        {variant.options.map((option, oIndex) => (
+                          <div key={oIndex} className="flex items-center gap-3 bg-white p-2 rounded-xl border border-gray-200">
+                            <input 
+                              placeholder="Nama opsi (contoh: Merah)" 
+                              value={option.name}
+                              onChange={(e) => updateOptionName(vIndex, oIndex, e.target.value)}
+                              className="flex-1 px-3 py-2 text-sm border-none focus:ring-1 focus:ring-blue-400 outline-none"
+                            />
+                            <input 
+                              placeholder="URL gambar (opsional)" 
+                              value={option.image || ''}
+                              onChange={(e) => updateOptionImage(vIndex, oIndex, e.target.value)}
+                              className="w-64 px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-400 outline-none"
+                            />
+                            <button 
+                              type="button"
+                              onClick={() => removeOptionFromVariant(vIndex, oIndex)}
+                              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition"
+                            >
+                              <TrashIcon size={14} />
+                            </button>
+                          </div>
+                        ))}
+                        {variant.options.length === 0 && (
+                          <p className="text-xs text-gray-400 italic pl-2">Belum ada opsi untuk varian ini</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
                 {/* DESKRIPSI */}
                 <div className="md:col-span-2 space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Deskripsi</label>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                    <ListIcon size={14}/> Deskripsi
+                  </label>
                   <textarea 
-                    rows={3} 
-                    value={formData.description} 
+                    rows={4} 
+                    value={formData.description || ''} 
                     onChange={e => setFormData({...formData, description: e.target.value})} 
                     className="w-full bg-gray-50 border-none rounded-2xl px-5 py-3 focus:ring-2 focus:ring-blue-500 transition outline-none text-sm font-medium" 
                     placeholder="Ceritakan tentang produk ini..." 
@@ -320,7 +493,7 @@ export const ProductsPage = () => {
               </div>
 
               {/* BUTTONS */}
-              <div className="mt-8 flex gap-3">
+              <div className="mt-10 flex gap-4">
                 <button 
                   type="button" 
                   onClick={() => setIsModalOpen(false)} 

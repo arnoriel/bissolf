@@ -1,5 +1,3 @@
-// /Users/azriel/Project/bissolf/src/pages/OrdersPage.tsx
-
 import { useState } from 'react';
 import { useStore } from '../context/StoreContext';
 import ExcelJS from 'exceljs';
@@ -13,7 +11,8 @@ import {
   X, 
   Package, 
   User, 
-  Phone 
+  Phone,
+  Sliders
 } from 'lucide-react';
 import type { OrderStatus, Order } from '../types';
 
@@ -47,6 +46,7 @@ export const OrdersPage = () => {
     sheet.columns = [
       { header: 'Order ID', key: 'id', width: 20 },
       { header: 'Product', key: 'product_name', width: 30 },
+      { header: 'Variant', key: 'variant', width: 20 }, // New Column for Variant
       { header: 'Buyer', key: 'buyer_name', width: 20 },
       { header: 'Phone', key: 'buyer_phone', width: 15 },
       { header: 'Address', key: 'buyer_location', width: 40 },
@@ -60,6 +60,7 @@ export const OrdersPage = () => {
     orders.forEach(order => {
       sheet.addRow({
         ...order,
+        variant: order.variant || '-', // Export Variant Info
         cancel_reason: order.cancel_reason || '-'
       });
     });
@@ -126,7 +127,15 @@ export const OrdersPage = () => {
                   </div>
                   <div className="mt-4 text-center">
                     <h4 className="font-bold text-gray-900 text-sm">{selectedOrder.product_name}</h4>
-                    <p className="text-blue-600 font-black text-lg mt-1">
+                    
+                    {/* Variant Detail in Modal */}
+                    {selectedOrder.variant && (
+                       <div className="inline-block mt-2 px-3 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded-lg border border-gray-200">
+                         {selectedOrder.variant}
+                       </div>
+                    )}
+
+                    <p className="text-blue-600 font-black text-lg mt-2">
                       Rp {selectedOrder.total_price.toLocaleString()}
                     </p>
                   </div>
@@ -224,7 +233,15 @@ export const OrdersPage = () => {
                 <td className="p-6 font-mono text-xs text-blue-600 font-bold">{order.id}</td>
                 <td className="p-6">
                   <div className="font-bold text-gray-900">{order.product_name}</div>
-                  <div className="text-xs text-gray-400 font-medium">{order.buyer_name} • {order.buyer_phone}</div>
+                  
+                  {/* Variant Info on Table */}
+                  {order.variant && (
+                    <div className="flex items-center gap-1 mt-1 text-xs text-purple-600 font-bold bg-purple-50 w-fit px-2 py-0.5 rounded">
+                      <Sliders size={10} /> {order.variant}
+                    </div>
+                  )}
+
+                  <div className="text-xs text-gray-400 font-medium mt-1">{order.buyer_name} • {order.buyer_phone}</div>
                 </td>
                 <td className="p-6">
                   <div className="flex flex-col gap-1">

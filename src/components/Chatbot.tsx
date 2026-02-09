@@ -1,3 +1,5 @@
+// /Users/azriel/Project/bissolf/src/components/Chatbot.tsx
+
 import { useState, useEffect, useRef } from 'react';
 import { X, Send, Loader2, Wallet, CreditCard, Bot, Copy, Check } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
@@ -57,32 +59,46 @@ export const Chatbot = () => {
   const processAIResponse = async () => {
     setIsLoading(true);
     
+    // Siapkan data konteks produk LENGKAP dengan variants
+    const productContext = products.map(p => ({
+      name: p.product_name, 
+      price: p.price, 
+      stock: p.stocks,
+      variants: p.variants || []
+    }));
+
     const systemPrompt = `
-      Kamu adalah asisten toko BISSOLF yang cerdas dan ramah.
+      Kamu adalah asisten toko BISSOLF yang cerdas, ramah, dan sangat teliti.
       
       DATA KONTEKS:
-      - Produk Tersedia: ${JSON.stringify(products.map(p => ({name: p.product_name, price: p.price, stock: p.stocks})))}
-      - Database Pesanan: ${JSON.stringify(orders.map(o => ({id: o.id, status: o.status, buyer: o.buyer_name, item: o.product_name})))}
+      - Produk Tersedia: ${JSON.stringify(productContext)}
+      - Database Pesanan: ${JSON.stringify(orders.map(o => ({id: o.id, status: o.status, buyer: o.buyer_name, item: o.product_name, variant: o.selected_variants})))}
       
       TUGAS UTAMA:
-      1. Jawab pertanyaan produk dengan ramah menggunakan Markdown.
-      2. PEMESANAN: Jika user ingin membeli, minta data berikut secara bertahap atau sekaligus:
-         - Nama
-         - No HP
-         - Alamat Lengkap. 
-           **INSTRUKSI KHUSUS ALAMAT:** Saat meminta alamat, kamu WAJIB meminta user menuliskan dengan format lengkap: "Nama Jalan, Nama Kelurahan, Nama Kecamatan, Nama Kota/Kabupaten, Nama Pulau, Kode Pos".
-         - Jumlah Pesanan
+      1. **PENTING: PENGECEKAN VARIAN PRODUK**:
+         - Sebelum meminta data diri, kamu WAJIB cek apakah produk memiliki \`variants\` (seperti Size, Color).
+         - Jika ADA variants dan user BELUM menyebutkan pilihannya secara spesifik: KAMU WAJIB BERTANYA varian mana yang dipilih.
+         - Contoh: "Pilihan bagus! Untuk Jaket ini tersedia Size: M, L, XL dan Warna: Army, Black. Kamu mau yang mana?"
+         - Jika TIDAK ADA variants atau user SUDAH menyebutkan pilihannya (misal: "Jaket size L warna Hitam"): BARU lanjutkan meminta data pengiriman.
+
+      2. PEMESANAN (Alur Data):
+         - Setelah varian clear, kumpulkan data berikut:
+           - Nama Lengkap
+           - Nomor HP (WhatsApp)
+           - Alamat Lengkap. **WAJIB FORMAT:** "Nama Jalan, Kelurahan, Kecamatan, Kota/Kabupaten, Provinsi, Kode Pos".
+           - Jumlah Pesanan
          
-         SETELAH semua data (Nama, HP, Alamat, Jumlah) lengkap, kamu WAJIB memberikan konfirmasi ringkas dan MENGELUARKAN JSON:
-         ~~~{"action": "PAYMENT", "product": "nama_produk", "qty": 1, "name": "user", "phone": "08x", "location": "Alamat user..."}~~~
+         SETELAH semua data lengkap, berikan ringkasan dan keluarkan JSON persis seperti format ini:
+         ~~~{"action": "PAYMENT", "product": "nama_produk", "qty": 1, "name": "user", "phone": "08x", "location": "Alamat Lengkap", "variant": "Varian yang dipilih"}~~~
          
-         JANGAN memberikan instruksi transfer manual di teks. Cukup katakan: "Terima kasih [Nama]! Silakan pilih metode pembayaran di bawah ini."
-      3. TRACKING & PEMBATALAN: Sesuai prosedur biasa.
-      4. PEMBATALAN PESANAN:
-         - Cari ID. Jika Packaging, tanya alasan.
-         - SETELAH alasan diberikan, keluarkan JSON: ~~~{"action": "CANCEL_ORDER", "orderId": "ORD-xxx", "reason": "alasan"}~~~
+         Isi field "variant" dengan pilihan user. Jika produk tidak punya varian, isi "-".
+
+      3. TRACKING & PEMBATALAN:
+         - Informasikan status pesanan berdasarkan database.
+         - Jika user membatalkan (Batalkan ORD-xxx), tanya alasan. Lalu keluarkan JSON:
+         ~~~{"action": "CANCEL_ORDER", "orderId": "ORD-xxx", "reason": "alasan"}~~~
       
-      Aturan: Gunakan Bahasa Indonesia. Bold bagian penting. Jangan bertele-tele saat data order sudah lengkap.
+      Aturan: Gunakan Bahasa Indonesia. Bold bagian penting. Jangan memberikan instruksi transfer manual karena sistem akan memunculkan menu pembayaran otomatis.
     `;
 
     const apiMessages = [
@@ -90,47 +106,49 @@ export const Chatbot = () => {
       ...chatMessages.map(m => ({ role: m.role, content: m.content }))
     ];
 
-    const reply = await getAIResponse(apiMessages);
-    
-    if (reply) {
-      const parts = reply.split('~~~');
-      const naturalText = parts[0].trim();
+    try {
+      const reply = await getAIResponse(apiMessages);
       
-      // Jika ada JSON action, eksekusi SEBELUM menampilkan pesan terakhir agar sinkron
-      if (parts.length > 1) {
-        try {
-          const actionData = JSON.parse(parts[1]);
-          
-          if (actionData.action === 'PAYMENT') {
-            setPendingOrderData(actionData); 
-            addChatMessage({ role: 'assistant', content: naturalText });
-          } 
-          else if (actionData.action === 'CANCEL_ORDER') {
-            // EKSEKUSI PEMBATALAN DI SINI
-            const result = cancelOrder(actionData.orderId, actionData.reason);
+      if (reply) {
+        const parts = reply.split('~~~');
+        const naturalText = parts[0].trim();
+        
+        if (parts.length > 1) {
+          try {
+            const actionData = JSON.parse(parts[1]);
             
-            if (result.success) {
-              addChatMessage({ 
-                role: 'assistant', 
-                content: `✅ **Berhasil Dibatalkan!**\n\nPesanan \`${actionData.orderId}\` telah resmi dibatalkan dengan alasan: *${actionData.reason}*.\n\nStatus di dashboard telah berubah menjadi **Canceled** dan stok telah dikembalikan.` 
-              });
-            } else {
-              addChatMessage({ 
-                role: 'assistant', 
-                content: `❌ **Gagal Membatalkan:** ${result.message}` 
-              });
+            if (actionData.action === 'PAYMENT') {
+              setPendingOrderData(actionData); 
+              addChatMessage({ role: 'assistant', content: naturalText });
+            } 
+            else if (actionData.action === 'CANCEL_ORDER') {
+              const result = cancelOrder(actionData.orderId, actionData.reason);
+              
+              if (result.success) {
+                addChatMessage({ 
+                  role: 'assistant', 
+                  content: `✅ **Pesanan Berhasil Dibatalkan**\n\nPesanan \`${actionData.orderId}\` telah resmi dibatalkan dengan alasan: *${actionData.reason}*.\n\nStatus di sistem telah diperbarui menjadi **Canceled**.` 
+                });
+              } else {
+                addChatMessage({ 
+                  role: 'assistant', 
+                  content: `❌ **Gagal Membatalkan:** ${result.message}` 
+                });
+              }
             }
+          } catch (e) {
+            console.error("Gagal parse action JSON", e);
+            addChatMessage({ role: 'assistant', content: naturalText });
           }
-        } catch (e) {
-          console.error("Gagal parse action JSON", e);
+        } else {
           addChatMessage({ role: 'assistant', content: naturalText });
         }
-      } else {
-        // Jika tidak ada action, tampilkan teks biasa
-        addChatMessage({ role: 'assistant', content: naturalText });
       }
+    } catch (error) {
+      addChatMessage({ role: 'assistant', content: "Maaf, terjadi gangguan pada koneksi saya. Bisa ulangi pesannya?" });
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleSend = () => {
@@ -175,9 +193,11 @@ export const Chatbot = () => {
       buyer_name: pendingOrderData.name,
       buyer_phone: pendingOrderData.phone,
       buyer_location: pendingOrderData.location || "Alamat tidak terdeteksi",
+      selected_variants: pendingOrderData.variant || "-",
       payment_method: selectedMethod,
       status: 'Packaging',
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      variant: ''
     };
 
     createOrder(newOrder);
@@ -188,7 +208,7 @@ export const Chatbot = () => {
     
     addChatMessage({ 
       role: 'assistant', 
-      content: `### ✅ Pembayaran Berhasil!\n\nPembayaran via **${selectedMethod}** dikonfirmasi.\n\n**Order ID:** \`${orderId}\` (Klik ID untuk menyalin)\n\nTerima kasih! Pesananmu sedang disiapkan.` 
+      content: `### ✅ Pembayaran Berhasil!\n\nPembayaran via **${selectedMethod}** telah diverifikasi.\n\n**Detail Pesanan:**\n- **Produk:** ${product.product_name}\n- **Varian:** ${newOrder.selected_variants}\n- **Order ID:** \`${orderId}\` (Klik ID untuk menyalin)\n\nTerima kasih! Pesananmu sedang kami siapkan untuk pengiriman.` 
     });
   };
 
@@ -216,7 +236,7 @@ export const Chatbot = () => {
             {isProcessingPayment ? (
               <div className="flex flex-col items-center justify-center py-6 space-y-4">
                 <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
-                <p className="text-sm font-black text-gray-600 animate-pulse">Memverifikasi...</p>
+                <p className="text-sm font-black text-gray-600 animate-pulse uppercase tracking-widest">Memverifikasi...</p>
               </div>
             ) : (
               <div className="space-y-5">
@@ -235,7 +255,17 @@ export const Chatbot = () => {
                 </div>
 
                 <div className="bg-gray-900 rounded-2xl p-5 text-white">
-                   <div className="flex justify-between items-center">
+                   <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs text-gray-400 font-bold">Produk:</span>
+                      <span className="text-xs text-white font-bold text-right w-32 truncate">{pendingOrderData?.product}</span>
+                   </div>
+                   {pendingOrderData?.variant && (
+                     <div className="flex justify-between items-center mb-3">
+                        <span className="text-xs text-gray-400 font-bold">Varian:</span>
+                        <span className="text-xs text-gray-300 font-bold text-right">{pendingOrderData.variant}</span>
+                     </div>
+                   )}
+                   <div className="flex justify-between items-center border-t border-gray-700 pt-3">
                       <span className="text-xs text-gray-400 font-bold">Total Tagihan:</span>
                       <span className="font-black text-blue-400 text-lg">
                         Rp {((products.find(p => p.product_name.toLowerCase().includes(pendingOrderData?.product?.toLowerCase() || ''))?.price || 0) * (pendingOrderData?.qty || 1)).toLocaleString()}
@@ -274,7 +304,7 @@ export const Chatbot = () => {
       </div>
 
       {/* Messages Area */}
-     <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-white">
+     <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-white custom-scrollbar">
         {chatMessages.map((msg, idx) => (
           <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[85%] p-5 rounded-[2rem] text-sm leading-relaxed ${
@@ -284,12 +314,9 @@ export const Chatbot = () => {
             }`}>
               <ReactMarkdown
                 components={{
-                  // Kita hapus 'inline' dari destructured props untuk menghindari error TS
                   code: ({ node, className, children, ...props }) => {
                     const content = String(children);
                     const isOrderId = /ORD-\d+/.test(content);
-                    
-                    // Cek apakah ini inline code (biasanya tidak diawali 'language-')
                     const isInline = !className?.includes('language-');
 
                     if (isInline && isOrderId) {
@@ -306,20 +333,10 @@ export const Chatbot = () => {
                           ) : (
                             <Copy size={12} className="opacity-50 group-hover:opacity-100" />
                           )}
-                          {copiedId === id && (
-                            <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] px-2 py-1 rounded shadow-lg animate-in fade-in zoom-in duration-200 whitespace-nowrap z-50">
-                              Copied!
-                            </span>
-                          )}
                         </button>
                       );
                     }
-
-                    return (
-                      <code className={className} {...props}>
-                        {children}
-                      </code>
-                    );
+                    return <code className={className} {...props}>{children}</code>;
                   }
                 }}
               >
@@ -349,6 +366,12 @@ export const Chatbot = () => {
                 <span className="text-gray-400 uppercase">Produk</span>
                 <span className="text-gray-900 text-right">{pendingOrderData.product}</span>
               </div>
+              {pendingOrderData.variant && (
+                <div className="flex justify-between text-[10px] font-bold">
+                  <span className="text-gray-400 uppercase">Varian</span>
+                  <span className="text-gray-900 text-right">{pendingOrderData.variant}</span>
+                </div>
+              )}
               <div className="flex justify-between items-center pt-2 border-t border-gray-200">
                 <span className="text-xs font-black">Total Bayar</span>
                 <span className="text-blue-600 font-black text-base">

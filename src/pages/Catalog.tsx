@@ -8,14 +8,17 @@ import type { Product, Order } from '../types';
 
 interface CatalogProps {
   products: Product[];
-  orders: Order[]; // Tambahkan orders ke props untuk menghitung popularitas
+  orders: Order[];
   onBack: () => void;
-  onOrder: (product: Product) => void;
+  onOrder: (product: Product & { selectedVariant?: string }) => void;
 }
 
 export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  
+  const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
+  
   const [currentBanner, setCurrentBanner] = useState(0);
 
   const banners = [
@@ -52,28 +55,22 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
     return () => clearInterval(timer);
   }, [banners.length]);
 
-  // LOGIKA BARU: Top Picks berdasarkan jumlah pesanan terbanyak
   const topPicks = useMemo(() => {
-    // 1. Hitung berapa kali tiap produk dipesan
     const orderCounts = orders.reduce((acc, order) => {
       acc[order.id_product] = (acc[order.id_product] || 0) + order.quantity;
       return acc;
     }, {} as Record<string, number>);
 
-    // 2. Urutkan produk berdasarkan jumlah pesanan tersebut
     return [...products]
       .sort((a, b) => {
         const countA = orderCounts[a.id] || 0;
         const countB = orderCounts[b.id] || 0;
-        
-        // Jika jumlah order sama, urutkan berdasarkan harga (opsional)
         if (countB === countA) return b.price - a.price;
         return countB - countA;
       })
       .slice(0, 4);
   }, [products, orders]);
 
-  // Logic: Filter & Grouping by Category
   const groupedProducts = useMemo(() => {
     const filtered = products.filter(p => 
       p.product_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -87,9 +84,30 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
     }, {} as Record<string, Product[]>);
   }, [products, searchQuery]);
 
+  const handleOpenProduct = (product: Product) => {
+    setSelectedProduct(product);
+    setSelectedVariants({});
+  };
+
+  const handleCheckout = () => {
+    if (!selectedProduct) return;
+
+    const variantEntries = Object.entries(selectedVariants);
+    const variantString = variantEntries.length > 0 
+      ? variantEntries.map(([key, val]) => `${key} ${val}`).join(', ')
+      : '';
+
+    onOrder({ 
+      ...selectedProduct, 
+      selectedVariant: variantString 
+    });
+    
+    setSelectedProduct(null);
+  };
+
   return (
-    <div className="animate-in slide-in-from-right-10 duration-700 bg-[#f8f9fb]">
-      <section className="py-8 md:py-12 min-h-screen">
+    <div className="animate-in slide-in-from-right-10 duration-700 bg-[#f8f9fb] min-h-screen">
+      <section className="py-8 md:py-12">
         <div className="max-w-7xl mx-auto px-3 md:px-8">
           
           {/* PREMIUM HEADER & SEARCH */}
@@ -121,7 +139,7 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
             </div>
           </div>
 
-          {/* TOP PICKS SECTION (2x2 on Mobile) */}
+          {/* TOP PICKS SECTION */}
           {!searchQuery && (
             <div className="mb-12 md:mb-24">
               <div className="flex items-center gap-3 md:gap-4 mb-6 md:mb-10 px-1">
@@ -136,7 +154,7 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
 
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
                 {topPicks.map(product => (
-                  <ProductCard key={product.id} product={product} onClick={() => setSelectedProduct(product)} isTopPick />
+                  <ProductCard key={product.id} product={product} onClick={() => handleOpenProduct(product)} isTopPick />
                 ))}
               </div>
             </div>
@@ -168,7 +186,7 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
             </div>
           </div>
 
-          {/* MAIN CATALOG (Grouped by Category - 2x2 on Mobile) */}
+          {/* MAIN CATALOG */}
           {Object.keys(groupedProducts).length > 0 ? (
             <div className="space-y-12 md:space-y-24">
               {Object.entries(groupedProducts).map(([category, items]) => (
@@ -184,7 +202,7 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
                   </div>
                   <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-10">
                     {items.map(product => (
-                      <ProductCard key={product.id} product={product} onClick={() => setSelectedProduct(product)} />
+                      <ProductCard key={product.id} product={product} onClick={() => handleOpenProduct(product)} />
                     ))}
                   </div>
                 </div>
@@ -201,58 +219,141 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
         </div>
       </section>
 
-      {/* DETAIL MODAL */}
+      {/* DETAIL MODAL - Diperbaiki: no empty space atas, close button di luar & kanan atas */}
       {selectedProduct && (
-        <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center p-0 md:p-6 lg:p-12 overflow-hidden">
-          <div className="absolute inset-0 bg-gray-950/90 backdrop-blur-2xl animate-in fade-in duration-500" onClick={() => setSelectedProduct(null)} />
-          <div className="bg-white w-full max-w-7xl h-[94vh] md:h-auto md:rounded-[4rem] rounded-t-[2.5rem] overflow-y-auto md:overflow-hidden relative z-10 animate-in slide-in-from-bottom md:zoom-in-95 duration-500">
-            <button 
-              onClick={() => setSelectedProduct(null)} 
-              className="absolute top-5 right-5 md:top-8 md:right-8 bg-gray-100 p-3 md:p-5 rounded-xl md:rounded-3xl hover:bg-red-50 hover:text-red-600 transition-all z-30"
-            >
-              <X size={20} className="md:w-[28px] md:h-[28px]" />
-            </button>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 h-full">
-              <div className="h-[300px] sm:h-[450px] lg:h-[850px] relative overflow-hidden group">
-                <img src={selectedProduct.image_url} className="w-full h-full object-cover" alt={selectedProduct.product_name} />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-6 md:p-16">
-                   <div className="flex items-center gap-2 md:gap-3 bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl border border-white/20">
-                      <Sparkles className="text-yellow-400" size={14} />
-                      <span className="text-white text-[9px] md:text-[10px] font-black uppercase tracking-widest">Premium Quality</span>
-                   </div>
+        <div className="fixed inset-0 z-[200] bg-gray-950/90 backdrop-blur-2xl flex items-end md:items-center justify-center overflow-hidden">
+          {/* Tombol close DIPINDAH KE LUAR MODAL, kanan atas */}
+          <button 
+            onClick={() => setSelectedProduct(null)} 
+            className="absolute top-4 right-4 md:top-6 md:right-6 z-[210] bg-white/90 backdrop-blur-md p-3 md:p-4 rounded-full shadow-lg hover:bg-red-50 hover:text-red-600 transition-all"
+          >
+            <X size={20} className="md:w-[28px] md:h-[28px]" />
+          </button>
+
+          <div 
+            className="
+              bg-white w-full max-w-7xl 
+              h-[94vh] md:h-[90vh] lg:h-[88vh]
+              rounded-t-[2.5rem] md:rounded-[3.5rem] lg:rounded-[4rem] 
+              overflow-y-auto 
+              relative z-10 
+              animate-in slide-in-from-bottom md:zoom-in-95 duration-500 
+              custom-scrollbar
+              pt-0 md:pt-0
+            "
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-2 min-h-full">
+              {/* Image Section - langsung dari atas, no padding atas */}
+              <div className="relative h-[40vh] sm:h-[50vh] lg:h-full overflow-hidden group order-1 lg:order-1">
+                <img 
+                  src={selectedProduct.image_url} 
+                  className="w-full h-full object-cover" 
+                  alt={selectedProduct.product_name} 
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-6 md:p-12 lg:p-16">
+                  <div className="flex items-center gap-2 md:gap-3 bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl border border-white/20">
+                    <Sparkles className="text-yellow-400" size={14} />
+                    <span className="text-white text-[9px] md:text-[10px] font-black uppercase tracking-widest">Premium Quality</span>
+                  </div>
                 </div>
               </div>
               
-              <div className="p-8 md:p-12 lg:p-24 flex flex-col justify-center">
+              {/* Detail Content */}
+              <div className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-16 flex flex-col order-2 lg:order-2">
                 <div className="flex items-center gap-3 md:gap-4 mb-6 md:mb-8">
-                   <span className="bg-blue-50 text-blue-600 text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] px-3 md:px-5 py-1.5 md:py-2 rounded-full border border-blue-100">{selectedProduct.category}</span>
-                   <div className="flex gap-1 text-yellow-400"><Star size={14} fill="currentColor" /><Star size={14} fill="currentColor" /><Star size={14} fill="currentColor" /><Star size={14} fill="currentColor" /><Star size={14} fill="currentColor" /></div>
+                  <span className="bg-blue-50 text-blue-600 text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] px-3 md:px-5 py-1.5 md:py-2 rounded-full border border-blue-100">
+                    {selectedProduct.category}
+                  </span>
+                  <div className="flex gap-1 text-yellow-400">
+                    <Star size={14} fill="currentColor" /><Star size={14} fill="currentColor" />
+                    <Star size={14} fill="currentColor" /><Star size={14} fill="currentColor" />
+                    <Star size={14} fill="currentColor" />
+                  </div>
                 </div>
 
-                <h2 className="text-3xl md:text-7xl font-black mb-5 md:mb-10 leading-[1] md:leading-[0.85] tracking-tighter uppercase text-gray-900">{selectedProduct.product_name}</h2>
-                <p className="text-gray-500 mb-8 md:mb-14 text-base md:text-2xl font-medium leading-relaxed italic border-l-[3px] md:border-l-[6px] border-blue-600 pl-5 md:pl-10">
+                <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black mb-5 md:mb-8 leading-tight tracking-tighter uppercase text-gray-900">
+                  {selectedProduct.product_name}
+                </h2>
+
+                <p className="text-gray-500 mb-6 md:mb-10 text-base md:text-lg lg:text-xl font-medium leading-relaxed italic border-l-4 md:border-l-[6px] border-blue-600 pl-4 md:pl-6 lg:pl-10">
                   "{selectedProduct.description}"
                 </p>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-8 mb-8 md:mb-16">
-                   <div className="p-5 md:p-10 bg-gray-50 rounded-2xl md:rounded-[3rem] border border-gray-100">
-                      <p className="text-[9px] md:text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1 md:mb-3">Availability</p>
-                      <p className="text-xl md:text-3xl font-black text-gray-900">{selectedProduct.stocks} <span className="text-sm md:text-lg text-gray-400 font-bold">Units</span></p>
-                   </div>
-                   <div className="p-5 md:p-10 bg-gray-900 text-white rounded-2xl md:rounded-[3rem] shadow-xl">
-                      <p className="text-[9px] md:text-[11px] font-black text-blue-400 uppercase tracking-widest mb-1 md:mb-3">Price</p>
-                      <p className="text-xl md:text-3xl font-black">Rp {selectedProduct.price.toLocaleString()}</p>
-                   </div>
+                <div className="grid grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
+                  <div className="p-4 md:p-6 lg:p-8 bg-gray-50 rounded-2xl md:rounded-[2rem] border border-gray-100">
+                    <p className="text-[9px] md:text-[10px] lg:text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1 md:mb-2">Availability</p>
+                    <p className="text-lg md:text-2xl lg:text-3xl font-black text-gray-900">
+                      {selectedProduct.stocks} <span className="text-sm md:text-base lg:text-lg text-gray-400 font-bold">Units</span>
+                    </p>
+                  </div>
+                  <div className="p-4 md:p-6 lg:p-8 bg-gray-900 text-white rounded-2xl md:rounded-[2rem] shadow-xl">
+                    <p className="text-[9px] md:text-[10px] lg:text-[11px] font-black text-blue-400 uppercase tracking-widest mb-1 md:mb-2">Price</p>
+                    <p className="text-lg md:text-2xl lg:text-3xl font-black">Rp {selectedProduct.price.toLocaleString()}</p>
+                  </div>
                 </div>
 
-                <button 
-                  onClick={() => { onOrder(selectedProduct); setSelectedProduct(null); }} 
-                  className="group relative bg-blue-600 text-white w-full py-5 md:py-9 rounded-2xl md:rounded-[3rem] font-black text-lg md:text-2xl flex items-center justify-center gap-3 md:gap-6 hover:bg-black transition-all shadow-[0_20px_40px_-10px_rgba(59,130,246,0.5)] active:scale-95 overflow-hidden"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer" />
-                  <ShoppingCart size={22} className="md:w-[32px] md:h-[32px]" /> CHECKOUT NOW
-                </button>
+                {/* Available Variants */}
+                {selectedProduct.variants && selectedProduct.variants.length > 0 && (
+                  <div className="mb-10 md:mb-12 lg:mb-14 space-y-5 md:space-y-6 lg:space-y-8">
+                    <div className="flex items-center gap-3">
+                      <div className="h-px bg-gray-200 flex-1"></div>
+                      <span className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Available Variants</span>
+                      <div className="h-px bg-gray-200 flex-1"></div>
+                    </div>
+
+                    {selectedProduct.variants.map((variant, index) => (
+                      <div key={index} className="space-y-3 md:space-y-4">
+                        <h4 className="text-xs md:text-sm lg:text-base font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                          {variant.name}
+                        </h4>
+                        
+                        <div className="flex flex-wrap gap-3 md:gap-4">
+                          {variant.options.map((option, optIndex) => {
+                            const hasImage = typeof option !== 'string' && option.image;
+                            const optionName = typeof option === 'string' ? option : option.name;
+
+                            return (
+                              <div
+                                key={optIndex}
+                                className={`flex flex-col items-center gap-1.5 md:gap-2 px-3 md:px-4 py-3 md:py-4 rounded-xl md:rounded-2xl transition-all duration-300 border cursor-default
+                                  ${hasImage 
+                                    ? 'bg-white border-gray-200 shadow-sm hover:shadow-md' 
+                                    : 'bg-white text-gray-400 border-gray-100'}`}
+                              >
+                                {hasImage && (
+                                  <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-lg md:rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
+                                    <img 
+                                      src={option.image}
+                                      alt={optionName}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                    />
+                                  </div>
+                                )}
+                                
+                                <span className={`text-[9px] md:text-xs font-bold uppercase tracking-widest text-center
+                                  ${hasImage ? 'text-gray-800' : 'text-gray-500'}`}>
+                                  {optionName}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Checkout Button */}
+                <div className="mt-8 md:mt-auto pb-6 md:pb-8 sticky bottom-0 left-0 right-0 bg-white pt-4 md:pt-6 z-20 border-t md:border-none">
+                  <button 
+                    onClick={handleCheckout}
+                    className="group relative bg-blue-600 text-white w-full py-5 md:py-7 lg:py-9 rounded-2xl md:rounded-[3rem] font-black text-lg md:text-xl lg:text-2xl flex items-center justify-center gap-3 md:gap-5 hover:bg-black transition-all shadow-[0_20px_40px_-10px_rgba(59,130,246,0.5)] active:scale-95 overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer" />
+                    <ShoppingCart size={22} className="md:w-[28px] md:h-[28px]" /> CHECKOUT NOW
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -262,7 +363,7 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
   );
 };
 
-// --- SUB-COMPONENT: PRODUCT CARD (Optimized for 2x2 Grid) ---
+// ProductCard component tetap sama
 const ProductCard = ({ product, onClick, isTopPick }: { product: Product, onClick: () => void, isTopPick?: boolean }) => (
   <div 
     key={product.id} 
@@ -291,9 +392,9 @@ const ProductCard = ({ product, onClick, isTopPick }: { product: Product, onClic
       </div>
       
       <div className="hidden md:flex absolute inset-0 bg-gradient-to-t from-blue-900/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 items-end p-10">
-          <button className="w-full bg-white text-gray-900 py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] shadow-2xl transform translate-y-8 group-hover:translate-y-0 transition-transform duration-500">
-            View Details
-          </button>
+        <button className="w-full bg-white text-gray-900 py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] shadow-2xl transform translate-y-8 group-hover:translate-y-0 transition-transform duration-500">
+          View Details
+        </button>
       </div>
     </div>
     
