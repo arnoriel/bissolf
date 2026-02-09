@@ -117,13 +117,13 @@ export const DashboardHome = () => {
   );
 
   return (
-    <div className="p-6 space-y-8 bg-[#fcfcfd]">
-      <header className="flex justify-between items-end">
+    <div className="p-0 lg:p-6 space-y-6 lg:space-y-8 bg-[#fcfcfd]">
+      <header className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 lg:gap-0">
         <div>
-          <h2 className="text-4xl font-black text-gray-900 tracking-tight">Market Analytics</h2>
-          <p className="text-gray-500 font-medium">Monitoring performa BISSOLF secara real-time.</p>
+          <h2 className="text-3xl lg:text-4xl font-black text-gray-900 tracking-tight">Market Analytics</h2>
+          <p className="text-gray-500 font-medium text-sm lg:text-base">Monitoring performa BISSOLF secara real-time.</p>
         </div>
-        <div className="text-right">
+        <div className="text-left lg:text-right w-full lg:w-auto flex flex-row lg:flex-col justify-between lg:justify-start items-center lg:items-end">
           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Live Updates</p>
           <p className="text-sm font-bold text-green-500 flex items-center justify-end gap-1">
             <span className="w-2 h-2 bg-green-500 rounded-full animate-ping"></span> System Active
@@ -131,9 +131,9 @@ export const DashboardHome = () => {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
         {/* REVENUE CARD (Net Revenue - Sudah Terpotong Cancel) */}
-        <div className="md:col-span-2 bg-gradient-to-br from-blue-600 to-indigo-700 p-8 rounded-[2.5rem] text-white shadow-2xl shadow-blue-200 relative overflow-hidden group">
+        <div className="col-span-1 md:col-span-2 bg-gradient-to-br from-blue-600 to-indigo-700 p-6 lg:p-8 rounded-[2rem] lg:rounded-[2.5rem] text-white shadow-xl lg:shadow-2xl shadow-blue-200 relative overflow-hidden group">
           <div className="relative z-10">
             <div className="flex items-center gap-2 mb-2">
               <div className="p-2 bg-white/10 rounded-lg">
@@ -141,7 +141,7 @@ export const DashboardHome = () => {
               </div>
               <p className="text-blue-100 font-bold uppercase tracking-widest text-xs">Net Balance Generated</p>
             </div>
-            <h3 className="text-5xl font-black mb-4 tracking-tighter">
+            <h3 className="text-3xl lg:text-5xl font-black mb-4 tracking-tighter break-all">
               Rp {stats.totalRevenue.toLocaleString()}
             </h3>
             
@@ -157,8 +157,8 @@ export const DashboardHome = () => {
               <p className="text-blue-200 text-[10px] font-medium uppercase tracking-wider">
                 vs 24 jam terakhir
               </p>
-              <div className="h-4 w-[1px] bg-white/20 mx-1"></div>
-              <div className="flex flex-col">
+              <div className="hidden sm:block h-4 w-[1px] bg-white/20 mx-1"></div>
+              <div className="flex flex-col w-full sm:w-auto mt-2 sm:mt-0">
                 <p className="text-red-200 text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
                   <XCircle size={10} /> Loss / Refunded
                 </p>
@@ -173,7 +173,7 @@ export const DashboardHome = () => {
 
         <button 
           onClick={() => setShowCustomerModal(true)}
-          className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col justify-between group relative overflow-hidden"
+          className="bg-white p-6 lg:p-8 rounded-[2rem] lg:rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col justify-between group relative overflow-hidden min-h-[160px]"
         >
           <div className="flex justify-between items-start">
             <div className="bg-purple-100 p-4 rounded-2xl text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
@@ -181,9 +181,9 @@ export const DashboardHome = () => {
             </div>
             <ArrowUpRight className="text-gray-300 group-hover:text-purple-600 transition-colors" />
           </div>
-          <div className="mt-4">
+          <div className="mt-4 text-left">
             <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px] mb-1">Loyal Customers</p>
-            <h3 className="text-4xl font-black text-gray-900">{uniqueCustomers.length}</h3>
+            <h3 className="text-3xl lg:text-4xl font-black text-gray-900">{uniqueCustomers.length}</h3>
             <p className="text-purple-600 text-xs font-bold mt-2">Database Pelanggan →</p>
           </div>
         </button>
@@ -191,17 +191,17 @@ export const DashboardHome = () => {
       
       {/* Chart Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-xl shadow-gray-100/50">
-          <div className="flex justify-between items-start mb-8">
+        <div className="lg:col-span-2 bg-white p-6 lg:p-8 rounded-[2rem] lg:rounded-[2.5rem] border border-gray-100 shadow-xl shadow-gray-100/50">
+          <div className="flex flex-col sm:flex-row justify-between items-start mb-6 lg:mb-8 gap-4">
             <div>
-              <h4 className="font-black text-gray-800 text-xl">Net Revenue Flow</h4>
+              <h4 className="font-black text-gray-800 text-lg lg:text-xl">Net Revenue Flow</h4>
               <p className="text-sm text-gray-400 font-medium">Grafik arus kas bersih (Excl. Canceled)</p>
             </div>
             <div className="flex gap-2">
               <span className="bg-blue-50 text-blue-600 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Live Flow</span>
             </div>
           </div>
-          <div className="h-[300px] w-full">
+          <div className="h-[250px] lg:h-[300px] w-full -ml-4 lg:ml-0">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
                 <defs>
@@ -223,10 +223,10 @@ export const DashboardHome = () => {
           </div>
         </div>
 
-        <div className="bg-gray-900 p-8 rounded-[2.5rem] text-white relative overflow-hidden flex flex-col justify-between">
+        <div className="bg-gray-900 p-6 lg:p-8 rounded-[2rem] lg:rounded-[2.5rem] text-white relative overflow-hidden flex flex-col justify-between">
           <div>
             <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px] mb-2 text-center">Net Sales Volume</p>
-            <h3 className="text-5xl font-black mb-2 text-center tracking-tight">{stats.totalSalesCount}</h3>
+            <h3 className="text-4xl lg:text-5xl font-black mb-2 text-center tracking-tight">{stats.totalSalesCount}</h3>
             <p className="text-center text-xs text-gray-500 uppercase tracking-widest font-bold">Items Sold (Excl. Batal)</p>
           </div>
           <div className="h-40 w-full mt-4">
@@ -246,7 +246,7 @@ export const DashboardHome = () => {
       </div>
 
       {/* Status Progress & Cancellation Info */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
         {[
           { label: 'Packaging', value: stats.packaging, icon: <Box size={20}/>, color: 'orange' },
           { label: 'Ready', value: stats.ready, icon: <Send size={20}/>, color: 'blue' },
@@ -254,13 +254,13 @@ export const DashboardHome = () => {
           { label: 'Done', value: stats.done, icon: <CheckCircle size={20}/>, color: 'green' },
           { label: 'Canceled', value: stats.canceled, icon: <XCircle size={20}/>, color: 'red' },
         ].map((item, i) => (
-          <div key={i} className="bg-white p-6 rounded-[2rem] border border-gray-100 flex flex-col gap-4 shadow-sm hover:shadow-md transition-all group">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-${item.color}-50 text-${item.color}-500 group-hover:scale-110 transition-transform`}>
+          <div key={i} className="bg-white p-4 lg:p-6 rounded-2xl lg:rounded-[2rem] border border-gray-100 flex flex-col gap-3 lg:gap-4 shadow-sm hover:shadow-md transition-all group">
+            <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-xl flex items-center justify-center bg-${item.color}-50 text-${item.color}-500 group-hover:scale-110 transition-transform`}>
               {item.icon}
             </div>
             <div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.1em]">{item.label}</p>
-              <h3 className={`text-2xl font-black ${item.color === 'red' ? 'text-red-600' : 'text-gray-900'}`}>{item.value}</h3>
+              <p className="text-[9px] lg:text-[10px] font-black text-gray-400 uppercase tracking-[0.1em]">{item.label}</p>
+              <h3 className={`text-xl lg:text-2xl font-black ${item.color === 'red' ? 'text-red-600' : 'text-gray-900'}`}>{item.value}</h3>
             </div>
           </div>
         ))}
@@ -270,22 +270,22 @@ export const DashboardHome = () => {
       {showCustomerModal && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-md animate-in fade-in" onClick={() => setShowCustomerModal(false)} />
-          <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl relative z-10 overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-8 border-b border-gray-50 flex justify-between items-center">
+          <div className="bg-white w-full max-w-2xl rounded-[2rem] lg:rounded-[3rem] shadow-2xl relative z-10 overflow-hidden flex flex-col max-h-[85vh] lg:max-h-[90vh]">
+            <div className="p-6 lg:p-8 border-b border-gray-50 flex justify-between items-center">
               <div>
-                <h3 className="text-2xl font-black text-gray-900">Database Pelanggan</h3>
-                <p className="text-sm text-gray-400 font-medium">Total {uniqueCustomers.length} pelanggan terdaftar</p>
+                <h3 className="text-xl lg:text-2xl font-black text-gray-900">Database Pelanggan</h3>
+                <p className="text-xs lg:text-sm text-gray-400 font-medium">Total {uniqueCustomers.length} pelanggan terdaftar</p>
               </div>
               <button onClick={() => setShowCustomerModal(false)} className="p-3 hover:bg-gray-100 rounded-full transition"><X /></button>
             </div>
             
-            <div className="p-8 space-y-6 flex-1 overflow-y-auto text-sm">
+            <div className="p-6 lg:p-8 space-y-6 flex-1 overflow-y-auto text-sm">
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input 
                   type="text" 
                   placeholder="Cari nama atau nomor telepon..." 
-                  className="w-full pl-12 pr-4 py-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                  className="w-full pl-12 pr-4 py-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500 outline-none font-medium text-sm lg:text-base"
                   value={customerSearch}
                   onChange={(e) => {setCustomerSearch(e.target.value); setCurrentPage(1);}}
                 />
@@ -293,17 +293,17 @@ export const DashboardHome = () => {
 
               <div className="space-y-3">
                 {paginatedCustomers.map((cust, i) => (
-                  <div key={i} className="flex items-center justify-between p-5 bg-gray-50 rounded-[1.5rem] border border-transparent hover:border-blue-100 hover:bg-white transition-all group">
+                  <div key={i} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 bg-gray-50 rounded-[1.5rem] border border-transparent hover:border-blue-100 hover:bg-white transition-all group gap-3 sm:gap-0">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black">
+                      <div className="w-10 h-10 lg:w-12 lg:h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black shrink-0">
                         {cust.name.charAt(0)}
                       </div>
-                      <div>
-                        <p className="font-black text-gray-900">{cust.name}</p>
+                      <div className="overflow-hidden">
+                        <p className="font-black text-gray-900 truncate">{cust.name}</p>
                         <p className="text-xs text-gray-400 font-bold">{cust.phone}</p>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-left sm:text-right w-full sm:w-auto pl-[3.5rem] sm:pl-0">
                       <p className="text-xs font-black text-blue-600">{cust.totalOrders} Pesanan</p>
                     </div>
                   </div>
@@ -311,8 +311,8 @@ export const DashboardHome = () => {
               </div>
             </div>
 
-            <div className="p-8 border-t border-gray-50 flex justify-between items-center bg-gray-50/50">
-              <p className="text-xs font-bold text-gray-400 tracking-widest">HALAMAN {currentPage} DARI {totalPages || 1}</p>
+            <div className="p-6 lg:p-8 border-t border-gray-50 flex justify-between items-center bg-gray-50/50">
+              <p className="text-[10px] lg:text-xs font-bold text-gray-400 tracking-widest">HALAMAN {currentPage} DARI {totalPages || 1}</p>
               <div className="flex gap-2">
                 <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="p-3 bg-white border border-gray-100 rounded-xl disabled:opacity-50"><ChevronLeft size={20} /></button>
                 <button disabled={currentPage === totalPages || totalPages === 0} onClick={() => setCurrentPage(p => p + 1)} className="p-3 bg-white border border-gray-100 rounded-xl disabled:opacity-50"><ChevronRight size={20} /></button>

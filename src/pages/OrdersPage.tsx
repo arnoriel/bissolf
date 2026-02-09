@@ -12,7 +12,8 @@ import {
   Package, 
   User, 
   Phone,
-  Sliders
+  Sliders,
+  Calendar
 } from 'lucide-react';
 import type { OrderStatus, Order } from '../types';
 
@@ -46,7 +47,7 @@ export const OrdersPage = () => {
     sheet.columns = [
       { header: 'Order ID', key: 'id', width: 20 },
       { header: 'Product', key: 'product_name', width: 30 },
-      { header: 'Variant', key: 'variant', width: 20 }, // New Column for Variant
+      { header: 'Variant', key: 'variant', width: 20 },
       { header: 'Buyer', key: 'buyer_name', width: 20 },
       { header: 'Phone', key: 'buyer_phone', width: 15 },
       { header: 'Address', key: 'buyer_location', width: 40 },
@@ -60,7 +61,7 @@ export const OrdersPage = () => {
     orders.forEach(order => {
       sheet.addRow({
         ...order,
-        variant: order.variant || '-', // Export Variant Info
+        variant: order.variant || '-',
         cancel_reason: order.cancel_reason || '-'
       });
     });
@@ -81,17 +82,17 @@ export const OrdersPage = () => {
   };
 
   return (
-    <div className="p-6 relative">
+    <div className="p-4 lg:p-6 relative min-h-screen bg-[#fcfcfd]">
       
       {/* --- DETAIL ORDER MODAL --- */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-2xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] sm:max-h-[90vh]">
             
             {/* Modal Header */}
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 sticky top-0 z-10">
               <div>
-                <h3 className="text-xl font-black text-gray-900 tracking-tight">DETAIL PESANAN</h3>
+                <h3 className="text-lg sm:text-xl font-black text-gray-900 tracking-tight">DETAIL PESANAN</h3>
                 <p className="text-xs text-blue-600 font-mono font-bold mt-1">{selectedOrder.id}</p>
               </div>
               <button 
@@ -103,8 +104,8 @@ export const OrdersPage = () => {
             </div>
 
             {/* Modal Content */}
-            <div className="p-8 overflow-y-auto">
-              <div className="flex flex-col md:flex-row gap-8">
+            <div className="p-6 sm:p-8 overflow-y-auto pb-10">
+              <div className="flex flex-col md:flex-row gap-6 md:gap-8">
                 
                 {/* Product Image Section */}
                 <div className="w-full md:w-1/3 shrink-0">
@@ -125,7 +126,7 @@ export const OrdersPage = () => {
                       x{selectedOrder.quantity}
                     </div>
                   </div>
-                  <div className="mt-4 text-center">
+                  <div className="mt-4 text-center md:text-left">
                     <h4 className="font-bold text-gray-900 text-sm">{selectedOrder.product_name}</h4>
                     
                     {/* Variant Detail in Modal */}
@@ -207,15 +208,96 @@ export const OrdersPage = () => {
       )}
 
       {/* --- PAGE HEADER --- */}
-      <div className="flex justify-between items-center mb-8">
-        <h2 className="text-3xl font-black text-gray-900 tracking-tighter">ORDER MANAGEMENT</h2>
-        <button onClick={exportToExcel} className="bg-green-600 text-white px-6 py-3 rounded-2xl flex items-center gap-2 hover:bg-green-700 shadow-lg shadow-green-100 transition font-bold">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8 gap-4">
+        <div>
+          <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tighter">ORDER MANAGEMENT</h2>
+          <p className="text-sm text-gray-500 font-medium mt-1">Kelola semua pesanan masuk di sini.</p>
+        </div>
+        <button onClick={exportToExcel} className="w-full md:w-auto bg-green-600 text-white px-6 py-3 rounded-2xl flex justify-center items-center gap-2 hover:bg-green-700 shadow-lg shadow-green-100 transition font-bold text-sm">
           <Download size={18} /> Export Excel
         </button>
       </div>
 
-      {/* --- TABLE --- */}
-      <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
+      {/* --- MOBILE VIEW: CARDS (Visible on Small Screens) --- */}
+      <div className="block lg:hidden space-y-4">
+        {orders.map(order => (
+          <div key={order.id} className="bg-white p-5 rounded-[1.5rem] border border-gray-100 shadow-sm flex flex-col gap-4 relative overflow-hidden">
+            {/* Card Header: ID & Date */}
+            <div className="flex justify-between items-start border-b border-gray-50 pb-3">
+               <div>
+                  <p className="font-mono text-[10px] text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded-md w-fit mb-1">{order.id}</p>
+                  <div className="flex items-center gap-1 text-[10px] text-gray-400 font-medium">
+                    <Calendar size={10} />
+                    {new Date(order.created_at).toLocaleDateString('id-ID')}
+                  </div>
+               </div>
+               <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${getStatusStyle(order.status)}`}>
+                  {order.status}
+               </span>
+            </div>
+
+            {/* Product Info */}
+            <div className="flex gap-4">
+              <div className="w-16 h-16 bg-gray-100 rounded-xl overflow-hidden shrink-0 border border-gray-200">
+                 {getProductImage(order.id_product) ? (
+                    <img src={getProductImage(order.id_product)} alt="" className="w-full h-full object-cover"/>
+                 ) : (
+                    <div className="w-full h-full flex items-center justify-center"><Package size={16} className="text-gray-300"/></div>
+                 )}
+              </div>
+              <div className="flex-1">
+                 <h4 className="font-bold text-gray-900 text-sm line-clamp-1">{order.product_name}</h4>
+                 {order.variant && (
+                    <div className="flex items-center gap-1 mt-1 text-[10px] text-purple-600 font-bold bg-purple-50 w-fit px-2 py-0.5 rounded">
+                      <Sliders size={10} /> {order.variant}
+                    </div>
+                  )}
+                 <div className="flex items-center gap-2 mt-2">
+                    <p className="text-xs text-gray-500">Qty: {order.quantity}</p>
+                    <p className="text-sm font-black text-gray-900">Rp {order.total_price.toLocaleString()}</p>
+                 </div>
+              </div>
+            </div>
+
+            {/* Buyer Info */}
+            <div className="bg-gray-50 p-3 rounded-xl flex items-center gap-3">
+               <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-gray-500 border border-gray-100 shadow-sm font-bold text-xs">
+                 {order.buyer_name.charAt(0)}
+               </div>
+               <div className="flex-1">
+                 <p className="text-xs font-bold text-gray-900">{order.buyer_name}</p>
+                 <div className="flex items-center gap-1 text-[10px] text-gray-500">
+                    <MapPin size={10} />
+                    <span className="line-clamp-1">{order.buyer_location || "-"}</span>
+                 </div>
+               </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-2">
+                <button 
+                  onClick={() => setSelectedOrder(order)}
+                  className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold text-xs hover:bg-gray-200 transition flex items-center justify-center gap-2"
+                >
+                  <Eye size={14} /> Detail
+                </button>
+                
+                {nextStatus[order.status] && (
+                  <button 
+                    onClick={() => updateOrderStatus(order.id, nextStatus[order.status]!)}
+                    className="flex-1 py-3 bg-gray-900 text-white rounded-xl font-bold text-xs hover:bg-blue-600 transition shadow-lg shadow-gray-200 flex items-center justify-center gap-2"
+                  >
+                    Next: {nextStatus[order.status]} <ChevronRight size={14} />
+                  </button>
+                )}
+            </div>
+          </div>
+        ))}
+        {orders.length === 0 && <div className="p-10 text-center text-gray-400 font-black uppercase tracking-widest text-xs">No Orders Yet.</div>}
+      </div>
+
+      {/* --- DESKTOP VIEW: TABLE (Visible on Large Screens) --- */}
+      <div className="hidden lg:block bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
         <table className="w-full text-left">
           <thead>
             <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-[0.2em] font-black border-b border-gray-100">
