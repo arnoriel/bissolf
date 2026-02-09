@@ -40,6 +40,12 @@ export const OrdersPage = () => {
     'Canceled': null
   };
 
+  // Helper function untuk mengambil text varian dengan aman
+  const getVariantText = (order: Order) => {
+    // Prioritaskan selected_variants, jika kosong baru ambil variant
+    return order.selected_variants || order.variant || null;
+  };
+
   const exportToExcel = async () => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Orders');
@@ -47,7 +53,7 @@ export const OrdersPage = () => {
     sheet.columns = [
       { header: 'Order ID', key: 'id', width: 20 },
       { header: 'Product', key: 'product_name', width: 30 },
-      { header: 'Variant', key: 'variant', width: 20 },
+      { header: 'Variant', key: 'variant', width: 30 }, // Lebar kolom ditambah
       { header: 'Buyer', key: 'buyer_name', width: 20 },
       { header: 'Phone', key: 'buyer_phone', width: 15 },
       { header: 'Address', key: 'buyer_location', width: 40 },
@@ -61,7 +67,8 @@ export const OrdersPage = () => {
     orders.forEach(order => {
       sheet.addRow({
         ...order,
-        variant: order.variant || '-',
+        // PERUBAHAN: Menggunakan helper atau logika OR untuk Excel
+        variant: order.selected_variants || order.variant || '-', 
         cancel_reason: order.cancel_reason || '-'
       });
     });
@@ -75,7 +82,6 @@ export const OrdersPage = () => {
     a.click();
   };
 
-  // Helper untuk mendapatkan URL gambar berdasarkan ID Produk di order
   const getProductImage = (productId: string) => {
     const product = products.find(p => p.id === productId);
     return product?.image_url;
@@ -129,10 +135,10 @@ export const OrdersPage = () => {
                   <div className="mt-4 text-center md:text-left">
                     <h4 className="font-bold text-gray-900 text-sm">{selectedOrder.product_name}</h4>
                     
-                    {/* Variant Detail in Modal */}
-                    {selectedOrder.variant && (
+                    {/* PERUBAHAN: Menampilkan Variant di Modal */}
+                    {getVariantText(selectedOrder) && (
                        <div className="inline-block mt-2 px-3 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded-lg border border-gray-200">
-                         {selectedOrder.variant}
+                         {getVariantText(selectedOrder)}
                        </div>
                     )}
 
@@ -247,11 +253,14 @@ export const OrdersPage = () => {
               </div>
               <div className="flex-1">
                  <h4 className="font-bold text-gray-900 text-sm line-clamp-1">{order.product_name}</h4>
-                 {order.variant && (
+                 
+                 {/* PERUBAHAN: Mobile View Variant */}
+                 {getVariantText(order) && (
                     <div className="flex items-center gap-1 mt-1 text-[10px] text-purple-600 font-bold bg-purple-50 w-fit px-2 py-0.5 rounded">
-                      <Sliders size={10} /> {order.variant}
+                      <Sliders size={10} /> {getVariantText(order)}
                     </div>
                   )}
+
                  <div className="flex items-center gap-2 mt-2">
                     <p className="text-xs text-gray-500">Qty: {order.quantity}</p>
                     <p className="text-sm font-black text-gray-900">Rp {order.total_price.toLocaleString()}</p>
@@ -316,10 +325,10 @@ export const OrdersPage = () => {
                 <td className="p-6">
                   <div className="font-bold text-gray-900">{order.product_name}</div>
                   
-                  {/* Variant Info on Table */}
-                  {order.variant && (
+                  {/* PERUBAHAN: Desktop Table Variant */}
+                  {getVariantText(order) && (
                     <div className="flex items-center gap-1 mt-1 text-xs text-purple-600 font-bold bg-purple-50 w-fit px-2 py-0.5 rounded">
-                      <Sliders size={10} /> {order.variant}
+                      <Sliders size={10} /> {getVariantText(order)}
                     </div>
                   )}
 
