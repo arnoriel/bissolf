@@ -23,8 +23,8 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
 
   const banners = [
     {
-      title: "SUMMER SALE",
-      subtitle: "UP TO 50% OFF",
+      title: "WELCOMERS",
+      subtitle: "GET CURATED AND GREAT PRODUCTS",
       desc: "Koleksi pilihan untuk gaya hidup maksimal.",
       bg: "bg-blue-600",
       accent: "bg-blue-400",
@@ -139,26 +139,6 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
             </div>
           </div>
 
-          {/* TOP PICKS SECTION */}
-          {!searchQuery && (
-            <div className="mb-12 md:mb-24">
-              <div className="flex items-center gap-3 md:gap-4 mb-6 md:mb-10 px-1">
-                <div className="bg-orange-100 p-2 md:p-3 rounded-xl md:rounded-2xl text-orange-600">
-                  <Flame size={20} className="md:w-[28px] md:h-[28px]" fill="currentColor" />
-                </div>
-                <div>
-                  <h3 className="text-lg md:text-3xl font-black text-gray-900 tracking-tighter uppercase">Top Picks</h3>
-                  <p className="text-gray-400 text-[8px] md:text-sm font-bold uppercase tracking-widest">Trending Choice</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
-                {topPicks.map(product => (
-                  <ProductCard key={product.id} product={product} onClick={() => handleOpenProduct(product)} isTopPick />
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* BANNER CAROUSEL */}
           <div className="relative mb-12 md:mb-24 overflow-hidden rounded-2xl md:rounded-[4rem] shadow-2xl group h-[280px] md:h-[450px]">
@@ -184,6 +164,32 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
                 <button key={i} onClick={() => setCurrentBanner(i)} className={`h-1 md:h-1.5 transition-all duration-500 rounded-full ${i === currentBanner ? 'w-6 md:w-12 bg-white' : 'w-2 md:w-4 bg-white/30'}`} />
               ))}
             </div>
+          </div>
+
+          {/* TOP PICKS SECTION */}
+          {!searchQuery && (
+            <div className="mb-12 md:mb-24">
+              <div className="flex items-center gap-3 md:gap-4 mb-6 md:mb-10 px-1">
+                <div className="bg-orange-100 p-2 md:p-3 rounded-xl md:rounded-2xl text-orange-600">
+                  <Flame size={20} className="md:w-[28px] md:h-[28px]" fill="currentColor" />
+                </div>
+                <div>
+                  <h3 className="text-lg md:text-3xl font-black text-gray-900 tracking-tighter uppercase">Top Picks</h3>
+                  <p className="text-gray-400 text-[8px] md:text-sm font-bold uppercase tracking-widest">Trending Choice</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
+                {topPicks.map(product => (
+                  <ProductCard key={product.id} product={product} onClick={() => handleOpenProduct(product)} isTopPick />
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="mb-10">
+            <h3 className="text-lg md:text-3xl font-black text-gray-900 tracking-tighter uppercase">All Items</h3>
+            <p className="text-gray-400 text-[8px] md:text-sm font-bold uppercase tracking-widest">Temukan produk yang sesuai untukmu</p>
           </div>
 
           {/* MAIN CATALOG */}
