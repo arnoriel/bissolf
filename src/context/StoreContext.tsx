@@ -1,4 +1,4 @@
-// /Users/azriel/Project/bissolf/src/context/StoreContext.tsx
+// F:\projectan\bissolf\src\context\StoreContext.tsx
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { Product, Order, ChatMessage, OrderStatus } from '../types';
@@ -17,7 +17,8 @@ interface StoreContextType {
   addProduct: (product: Product) => void;
   updateProduct: (product: Product) => void;
   deleteProduct: (id: string) => void;
-  updateProductStock: (id: string, qty: number) => void;
+  // UPDATE: Menambahkan parameter opsional variantOptionName
+  updateProductStock: (id: string, qty: number, variantOptionName?: string) => void;
   initiateOrderFromLanding: (product: Product, variantLabel?: string) => void;
   resetChat: () => void;
 }
@@ -25,13 +26,11 @@ interface StoreContextType {
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Inisialisasi Produk dari LocalStorage atau Dummy Data
   const [products, setProducts] = useState<Product[]>(() => {
     const saved = localStorage.getItem('bissolf_products');
     return saved ? JSON.parse(saved) : dummyProducts;
   });
 
-  // Inisialisasi Pesanan dari LocalStorage
   const [orders, setOrders] = useState<Order[]>(() => {
     const saved = localStorage.getItem('bissolf_orders');
     return saved ? JSON.parse(saved) : [];
@@ -40,7 +39,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
-  // Efek untuk Sinkronisasi ke LocalStorage setiap ada perubahan data
   useEffect(() => {
     localStorage.setItem('bissolf_products', JSON.stringify(products));
   }, [products]);
@@ -73,11 +71,34 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setProducts(prev => prev.filter(p => p.id !== id));
   };
 
-  const updateProductStock = (id: string, qty: number) => {
+  // --- UPDATE: Logic Stok Varian ---
+  // Fungsi ini sekarang bisa menangani pengurangan stok Global DAN Stok Varian
+  const updateProductStock = (id: string, qty: number, variantOptionName?: string) => {
     setProducts(prev => prev.map(p => {
       if (p.id === id) {
-        // Mengurangi stok, namun pastikan tidak kurang dari 0
-        return { ...p, stocks: Math.max(0, p.stocks - qty) };
+        // 1. Update Stok Global Product
+        const newGlobalStock = Math.max(0, p.stocks - qty);
+        
+        // 2. Update Stok Varian Spesifik (jika ada variantOptionName)
+        let updatedVariants = p.variants;
+        
+        if (variantOptionName && p.variants) {
+           updatedVariants = p.variants.map(v => ({
+             ...v,
+             options: v.options.map(opt => {
+               // Cek apakah nama option ini ada di dalam string varian yang dipilih
+               // Misal: variantOptionName = "Rasa: Stroberi", opt.name = "Stroberi" -> Match!
+               if (variantOptionName.includes(opt.name)) {
+                 const currentVariantStock = opt.stock !== undefined ? opt.stock : 0;
+                 // Jika qty positif = mengurangi stok. Jika negatif = menambah stok (untuk cancel order)
+                 return { ...opt, stock: Math.max(0, currentVariantStock - qty) }; 
+               }
+               return opt;
+             })
+           }));
+        }
+
+        return { ...p, stocks: newGlobalStock, variants: updatedVariants };
       }
       return p;
     }));
@@ -86,8 +107,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // --- Order Management ---
   const createOrder = (order: Order) => {
     setOrders(prev => [order, ...prev]);
-    // Otomatis kurangi stok produk saat order berhasil dibuat
-    updateProductStock(order.id_product, order.quantity);
+    // UPDATE: Kirim juga selected_variants agar stok varian spesifik ikut berkurang
+    updateProductStock(order.id_product, order.quantity, order.selected_variants);
   };
 
   const updateOrderStatus = (orderId: string, status: OrderStatus) => {
@@ -101,7 +122,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return { success: false, message: "Pesanan tidak ditemukan di database." };
     }
 
-    // Hanya pesanan dengan status 'Packaging' yang bisa dibatalkan secara otomatis via Chatbot
     if (order.status !== 'Packaging') {
       return { 
         success: false, 
@@ -116,12 +136,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         : o
     ));
 
-    // 2. Kembalikan stok produk yang sebelumnya dipesan
-    setProducts(prev => prev.map(p => 
-      p.id === order.id_product 
-        ? { ...p, stocks: p.stocks + order.quantity } 
-        : p
-    ));
+    // 2. Kembalikan stok produk (Pass quantity negatif untuk menambah stok kembali)
+    // UPDATE: Kirim juga selected_variants agar stok varian dikembalikan
+    updateProductStock(order.id_product, -order.quantity, order.selected_variants);
 
     return { 
       success: true, 
@@ -129,15 +146,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
   };
 
-  /**
-   * Fungsi untuk memicu pembelian dari Landing Page/Katalog.
-   * Mendukung label varian agar Chatbot AI langsung mendapatkan konteks pilihan user.
-   */
   const initiateOrderFromLanding = (product: Product, variantLabel?: string) => {
     setIsChatOpen(true);
     
     const content = variantLabel 
-      ? `Halo BISSOLF! Saya tertarik untuk memesan ${product.product_name} dengan ${variantLabel}` 
+      ? `Halo BISSOLF! Saya tertarik untuk memesan ${product.product_name} dengan varian ${variantLabel}` 
       : `Halo BISSOLF! Saya tertarik untuk memesan ${product.product_name}`;
     
     addChatMessage({ role: 'user', content: content });

@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import type { Product, ProductVariant, VariantOption } from '../types';
 
-// Interface lokal untuk form (mengikuti struktur types.ts yang baru)
+// Interface lokal untuk form 
 interface FormVariant {
   name: string;
   options: VariantOption[];
@@ -35,7 +35,7 @@ export const ProductsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
-  // Form State - variants sekarang pakai struktur baru
+  // Form State
   const [formData, setFormData] = useState<Partial<Product> & { variants: FormVariant[] }>({
     product_name: '',
     product_sku: '',
@@ -72,13 +72,13 @@ export const ProductsPage = () => {
   const openModal = (product?: Product) => {
     if (product) {
       setEditingProduct(product);
-      // Mapping variants ke format form (tambahkan image jika belum ada)
+      // Mapping variants ke format form (pastikan stok dan image terbawa)
       const mappedVariants = (product.variants || []).map(v => ({
         name: v.name,
         options: v.options.map(opt => 
           typeof opt === 'string' 
-            ? { name: opt, image: undefined } 
-            : { name: opt.name, image: opt.image }
+            ? { name: opt, image: undefined, stock: 0 } 
+            : { name: opt.name, image: opt.image, stock: opt.stock || 0 }
         )
       }));
       setFormData({
@@ -103,7 +103,7 @@ export const ProductsPage = () => {
   };
 
   // ────────────────────────────────────────────────
-  // Logic CRUD Variant di dalam Form (versi baru)
+  // Logic CRUD Variant di dalam Form
   // ────────────────────────────────────────────────
 
   const addVariantField = () => {
@@ -127,7 +127,8 @@ export const ProductsPage = () => {
 
   const addOptionToVariant = (variantIndex: number) => {
     const newVariants = [...(formData.variants || [])];
-    newVariants[variantIndex].options.push({ name: '', image: undefined });
+    // Default stock 0 saat add option baru
+    newVariants[variantIndex].options.push({ name: '', image: undefined, stock: 0 });
     setFormData({ ...formData, variants: newVariants });
   };
 
@@ -140,6 +141,13 @@ export const ProductsPage = () => {
   const updateOptionImage = (variantIndex: number, optionIndex: number, imageUrl: string) => {
     const newVariants = [...(formData.variants || [])];
     newVariants[variantIndex].options[optionIndex].image = imageUrl || undefined;
+    setFormData({ ...formData, variants: newVariants });
+  };
+
+  // FUNGSI BARU: Update Stok Per Opsi
+  const updateOptionStock = (variantIndex: number, optionIndex: number, stock: string) => {
+    const newVariants = [...(formData.variants || [])];
+    newVariants[variantIndex].options[optionIndex].stock = Number(stock);
     setFormData({ ...formData, variants: newVariants });
   };
 
@@ -164,7 +172,7 @@ export const ProductsPage = () => {
       ...formData,
       id: editingProduct ? editingProduct.id : Date.now().toString(),
       price: Number(formData.price),
-      stocks: Number(formData.stocks),
+      stocks: Number(formData.stocks), // Ini stok global
       variants: cleanedVariants.length > 0 ? cleanedVariants : undefined,
     } as Product;
 
@@ -226,16 +234,18 @@ export const ProductsPage = () => {
                   <h3 className="font-bold text-gray-900 text-sm truncate">{product.product_name}</h3>
                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">{product.product_sku}</p>
                   <div className="flex flex-wrap gap-1">
-                     <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-bold uppercase">{product.category}</span>
-                     {product.variants?.length ? (
-                       <span className="text-[9px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-bold uppercase">{product.variants.length} Varian</span>
-                     ) : null}
+                      <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-bold uppercase">{product.category}</span>
+                      {product.variants?.map((v, i) => (
+                        <span key={i} className="text-[9px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-bold uppercase">
+                           {v.name} ({v.options.length})
+                        </span>
+                      ))}
                   </div>
                 </div>
                 <div className="flex items-end justify-between mt-2">
                    <div>
                       <p className="text-xs font-black text-gray-900">Rp {product.price.toLocaleString()}</p>
-                      <p className={`text-[9px] font-bold ${product.stocks < 5 ? 'text-red-500' : 'text-green-500'}`}>Stok: {product.stocks}</p>
+                      <p className={`text-[9px] font-bold ${product.stocks < 5 ? 'text-red-500' : 'text-green-500'}`}>Global Stok: {product.stocks}</p>
                    </div>
                    <div className="flex gap-1">
                       <button onClick={() => openModal(product)} className="p-2 bg-gray-50 text-blue-600 rounded-lg"><EditIcon size={14}/></button>
@@ -259,9 +269,9 @@ export const ProductsPage = () => {
             <thead>
               <tr className="bg-gray-50/50 border-b border-gray-100 text-gray-400 text-[10px] uppercase tracking-widest font-black">
                 <th className="p-6">Produk</th>
-                <th className="p-6">Kategori & Varian</th>
+                <th className="p-6">Varian & Stok Detail</th>
                 <th className="p-6">Harga</th>
-                <th className="p-6">Stok</th>
+                <th className="p-6">Stok Total</th>
                 <th className="p-6 text-right">Aksi</th>
               </tr>
             </thead>
@@ -275,19 +285,30 @@ export const ProductsPage = () => {
                         <div>
                           <p className="font-bold text-gray-900">{product.product_name}</p>
                           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">{product.product_sku}</p>
+                          <span className="text-[9px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200 font-medium inline-block mt-1">
+                             {product.category}
+                          </span>
                         </div>
                       </div>
                     </td>
                     <td className="p-6">
-                      <p className="font-semibold text-gray-500 mb-1">{product.category}</p>
-                      {product.variants && product.variants.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
+                      {product.variants && product.variants.length > 0 ? (
+                        <div className="flex flex-col gap-2">
                           {product.variants.map((v, i) => (
-                            <span key={i} className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded border border-gray-200 font-medium">
-                              {v.name}: {v.options.length} opsi
-                            </span>
+                            <div key={i} className="flex flex-col gap-1">
+                              <span className="text-[10px] font-bold text-gray-400 uppercase">{v.name}:</span>
+                              <div className="flex flex-wrap gap-1">
+                                {v.options.map((opt, optIdx) => (
+                                  <span key={optIdx} className="text-[10px] bg-white border border-gray-200 text-gray-600 px-2 py-0.5 rounded-md shadow-sm">
+                                    {opt.name} <span className={`font-black ml-0.5 ${ (opt.stock || 0) <= 0 ? 'text-red-500' : 'text-blue-600' }`}>({opt.stock || 0})</span>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
                           ))}
                         </div>
+                      ) : (
+                        <span className="text-gray-400 text-xs italic">- Tidak ada varian -</span>
                       )}
                     </td>
                     <td className="p-6 font-black text-gray-900">Rp {product.price.toLocaleString()}</td>
@@ -417,10 +438,10 @@ export const ProductsPage = () => {
                   />
                 </div>
 
-                {/* STOK */}
+                {/* STOK TOTAL */}
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                    <BoxIcon size={14}/> Stok Awal
+                    <BoxIcon size={14}/> Stok Total (Global)
                   </label>
                   <input 
                     required 
@@ -445,7 +466,7 @@ export const ProductsPage = () => {
                 </div>
 
                 {/* ──────────────────────────────────────────────── */}
-                {/* VARIANT SECTION - SUPPORT GAMBAR PER OPSI */}
+                {/* VARIANT SECTION - SUPPORT STOK & GAMBAR PER OPSI */}
                 {/* ──────────────────────────────────────────────── */}
                 <div className="md:col-span-2 space-y-5 pt-6 border-t border-dashed border-gray-200">
                   <div className="flex justify-between items-center">
@@ -494,27 +515,53 @@ export const ProductsPage = () => {
                         </div>
                       </div>
 
-                      {/* List Opsi + Gambar */}
+                      {/* List Opsi + Stok + Gambar */}
                       <div className="space-y-2 pl-0 sm:pl-4 sm:border-l-2 sm:border-gray-200 sm:ml-2">
+                        {/* Header Kecil untuk Kolom */}
+                        {variant.options.length > 0 && (
+                           <div className="hidden sm:flex gap-2 text-[10px] text-gray-400 font-bold uppercase tracking-wider px-2">
+                              <span className="flex-1">Nama Opsi</span>
+                              <span className="w-20">Stok</span>
+                              <span className="w-40">URL Gambar (Opsional)</span>
+                              <span className="w-8"></span>
+                           </div>
+                        )}
+
                         {variant.options.map((option, oIndex) => (
-                          <div key={oIndex} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 bg-white p-2 rounded-xl border border-gray-200">
+                          <div key={oIndex} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2 bg-white p-2 rounded-xl border border-gray-200">
+                            {/* Input Nama Opsi */}
                             <input 
-                              placeholder="Nama Opsi (Mis: Merah)" 
+                              placeholder="Nama (Mis: Merah)" 
                               value={option.name}
                               onChange={(e) => updateOptionName(vIndex, oIndex, e.target.value)}
-                              className="flex-1 px-3 py-2 text-sm border-none bg-gray-50 sm:bg-transparent rounded-lg focus:ring-1 focus:ring-blue-400 outline-none"
+                              className="flex-1 px-3 py-2 text-sm border-none bg-gray-50 sm:bg-transparent rounded-lg focus:ring-1 focus:ring-blue-400 outline-none font-medium"
                             />
-                            <div className="flex gap-2">
+                            
+                            <div className="flex gap-2 w-full sm:w-auto">
+                                {/* Input Stok Opsi */}
+                                <div className="relative w-full sm:w-20">
+                                  <input 
+                                    type="number"
+                                    placeholder="Stok" 
+                                    value={option.stock ?? 0}
+                                    onChange={(e) => updateOptionStock(vIndex, oIndex, e.target.value)}
+                                    className="w-full px-3 py-2 text-sm text-center bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-400 outline-none"
+                                  />
+                                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-gray-400 font-bold sm:hidden">Qty</span>
+                                </div>
+
+                                {/* Input URL Gambar */}
                                 <input 
-                                placeholder="URL Img (Opsional)" 
-                                value={option.image || ''}
-                                onChange={(e) => updateOptionImage(vIndex, oIndex, e.target.value)}
-                                className="w-full sm:w-48 px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-400 outline-none"
+                                  placeholder="URL Img" 
+                                  value={option.image || ''}
+                                  onChange={(e) => updateOptionImage(vIndex, oIndex, e.target.value)}
+                                  className="w-full sm:w-40 px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-400 outline-none"
                                 />
+
                                 <button 
-                                type="button"
-                                onClick={() => removeOptionFromVariant(vIndex, oIndex)}
-                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition shrink-0"
+                                  type="button"
+                                  onClick={() => removeOptionFromVariant(vIndex, oIndex)}
+                                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition shrink-0"
                                 >
                                 <TrashIcon size={14} />
                                 </button>

@@ -17,16 +17,16 @@ export const dummyProducts: Product[] = [
       { 
         name: 'Gilingan', 
         options: [
-          { name: 'Biji Utuh', image: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=80' },
-          { name: 'Bubuk Halus', image: 'https://images.unsplash.com/photo-1646346835113-b83a4097983b?w=80' },
-          { name: 'Bubuk Kasar', image: 'https://images.unsplash.com/photo-1517254456976-ee8682099819?w=80' }
+          { name: 'Biji Utuh', image: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=80', stock: 15 },
+          { name: 'Bubuk Halus', image: 'https://images.unsplash.com/photo-1646346835113-b83a4097983b?w=80', stock: 20 },
+          { name: 'Bubuk Kasar', image: 'https://images.unsplash.com/photo-1517254456976-ee8682099819?w=80', stock: 10 }
         ] 
       },
       { 
         name: 'Roasting', 
         options: [
-          { name: 'Medium', image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=80' },
-          { name: 'Dark', image: 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=80' }
+          { name: 'Medium', image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=80', stock: 25 },
+          { name: 'Dark', image: 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=80', stock: 20 }
         ] 
       }
     ]
@@ -45,10 +45,10 @@ export const dummyProducts: Product[] = [
       { 
         name: 'Size', 
         options: [
-          { name: 'S' },
-          { name: 'M' },
-          { name: 'L' },
-          { name: 'XL' }
+          { name: 'S', stock: 3 },
+          { name: 'M', stock: 4 },
+          { name: 'L', stock: 3 },
+          { name: 'XL', stock: 2 }
         ] 
       }
     ]
@@ -67,9 +67,9 @@ export const dummyProducts: Product[] = [
       { 
         name: 'Warna', 
         options: [
-          { name: 'Hitam', image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=80' },
-          { name: 'Merah', image: 'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=80' },
-          { name: 'Biru', image: 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=80' }
+          { name: 'Hitam', image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=80', stock: 1 },
+          { name: 'Merah', image: 'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=80', stock: 1 },
+          { name: 'Biru', image: 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=80', stock: 1 }
         ] 
       }
     ]
@@ -88,9 +88,9 @@ export const dummyProducts: Product[] = [
       { 
         name: 'Warna', 
         options: [
-          { name: 'Silver', image: 'https://images.unsplash.com/photo-1517254456976-ee8682099819?w=80' },
-          { name: 'Black Matte', image: 'https://images.unsplash.com/photo-1603487742131-4160ec999306?w=80' },
-          { name: 'Gold' }
+          { name: 'Silver', image: 'https://images.unsplash.com/photo-1517254456976-ee8682099819?w=80', stock: 10 },
+          { name: 'Black Matte', image: 'https://images.unsplash.com/photo-1603487742131-4160ec999306?w=80', stock: 10 },
+          { name: 'Gold', stock: 5 }
         ] 
       }
     ]
@@ -109,8 +109,8 @@ export const dummyProducts: Product[] = [
       { 
         name: 'Gilingan', 
         options: [
-          { name: 'Biji Utuh', image: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=80' },
-          { name: 'Bubuk', image: 'https://images.unsplash.com/photo-1646346835113-b83a4097983b?w=80' }
+          { name: 'Biji Utuh', image: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=80', stock: 15 },
+          { name: 'Bubuk', image: 'https://images.unsplash.com/photo-1646346835113-b83a4097983b?w=80', stock: 15 }
         ] 
       }
     ]
@@ -129,17 +129,17 @@ export const dummyProducts: Product[] = [
       { 
         name: 'Size', 
         options: [
-          { name: 'M' },
-          { name: 'L' },
-          { name: 'XL' }
+          { name: 'M', stock: 3 },
+          { name: 'L', stock: 3 },
+          { name: 'XL', stock: 2 }
         ] 
       },
       { 
         name: 'Warna', 
         options: [
-          { name: 'Abu Misty', image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=80' },
-          { name: 'Hitam', image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=80' },
-          { name: 'Navy', image: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=80' }
+          { name: 'Abu Misty', image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=80', stock: 3 },
+          { name: 'Hitam', image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=80', stock: 3 },
+          { name: 'Navy', image: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=80', stock: 2 }
         ] 
       }
     ]
@@ -158,9 +158,9 @@ export const dummyProducts: Product[] = [
       { 
         name: 'Switch', 
         options: [
-          { name: 'Red' },
-          { name: 'Blue' },
-          { name: 'Brown' }
+          { name: 'Red', stock: 5 },
+          { name: 'Blue', stock: 5 },
+          { name: 'Brown', stock: 5 }
         ] 
       }
     ]
@@ -203,9 +203,9 @@ export const dummyProducts: Product[] = [
       { 
         name: 'Motif', 
         options: [
-          { name: 'Polos', image: 'https://images.unsplash.com/photo-1544816155-12df9643f363?w=80' },
-          { name: 'Abstract', image: 'https://images.unsplash.com/photo-1557683316-973673baf926?w=80' },
-          { name: 'Quote' }
+          { name: 'Polos', image: 'https://images.unsplash.com/photo-1544816155-12df9643f363?w=80', stock: 40 },
+          { name: 'Abstract', image: 'https://images.unsplash.com/photo-1557683316-973673baf926?w=80', stock: 30 },
+          { name: 'Quote', stock: 30 }
         ] 
       }
     ]
@@ -236,18 +236,18 @@ export const dummyProducts: Product[] = [
       { 
         name: 'Size', 
         options: [
-          { name: '28' },
-          { name: '30' },
-          { name: '32' },
-          { name: '34' }
+          { name: '28', stock: 5 },
+          { name: '30', stock: 6 },
+          { name: '32', stock: 6 },
+          { name: '34', stock: 5 }
         ] 
       },
       { 
         name: 'Warna', 
         options: [
-          { name: 'Light Blue', image: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=80' },
-          { name: 'Deep Blue', image: 'https://images.unsplash.com/photo-1602293589930-45aad59ba3ab?w=80' },
-          { name: 'Black' }
+          { name: 'Light Blue', image: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=80', stock: 8 },
+          { name: 'Deep Blue', image: 'https://images.unsplash.com/photo-1602293589930-45aad59ba3ab?w=80', stock: 8 },
+          { name: 'Black', stock: 6 }
         ] 
       }
     ]
@@ -278,10 +278,10 @@ export const dummyProducts: Product[] = [
       { 
         name: 'Warna', 
         options: [
-          { name: 'Hitam', image: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=80' },
-          { name: 'Putih' },
-          { name: 'Navy' },
-          { name: 'Maroon' }
+          { name: 'Hitam', image: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=80', stock: 10 },
+          { name: 'Putih', stock: 10 },
+          { name: 'Navy', stock: 10 },
+          { name: 'Maroon', stock: 10 }
         ] 
       }
     ]
@@ -300,9 +300,9 @@ export const dummyProducts: Product[] = [
       { 
         name: 'Rasa', 
         options: [
-          { name: 'Original', image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=80' },
-          { name: 'Caramel' },
-          { name: 'Hazelnut' }
+          { name: 'Original', image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=80', stock: 20 },
+          { name: 'Caramel', stock: 15 },
+          { name: 'Hazelnut', stock: 15 }
         ] 
       }
     ]
@@ -321,11 +321,11 @@ export const dummyProducts: Product[] = [
       { 
         name: 'Size', 
         options: [
-          { name: '39' },
-          { name: '40' },
-          { name: '41' },
-          { name: '42' },
-          { name: '43' }
+          { name: '39', stock: 6 },
+          { name: '40', stock: 6 },
+          { name: '41', stock: 6 },
+          { name: '42', stock: 6 },
+          { name: '43', stock: 6 }
         ] 
       }
     ]
@@ -356,17 +356,17 @@ export const dummyProducts: Product[] = [
       { 
         name: 'Cover', 
         options: [
-          { name: 'Hitam', image: 'https://images.unsplash.com/photo-1531346878377-a5be20888e57?w=80' },
-          { name: 'Coklat' },
-          { name: 'Navy' }
+          { name: 'Hitam', image: 'https://images.unsplash.com/photo-1531346878377-a5be20888e57?w=80', stock: 20 },
+          { name: 'Coklat', stock: 20 },
+          { name: 'Navy', stock: 20 }
         ] 
       },
       { 
         name: 'Isi', 
         options: [
-          { name: 'Garis' },
-          { name: 'Polos' },
-          { name: 'Dotted' }
+          { name: 'Garis', stock: 20 },
+          { name: 'Polos', stock: 20 },
+          { name: 'Dotted', stock: 20 }
         ] 
       }
     ]
@@ -385,8 +385,8 @@ export const dummyProducts: Product[] = [
       { 
         name: 'Gilingan', 
         options: [
-          { name: 'Biji', image: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=80' },
-          { name: 'Bubuk' }
+          { name: 'Biji', image: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=80', stock: 12 },
+          { name: 'Bubuk', stock: 13 }
         ] 
       }
     ]
@@ -405,17 +405,17 @@ export const dummyProducts: Product[] = [
       { 
         name: 'Size', 
         options: [
-          { name: 'M' },
-          { name: 'L' },
-          { name: 'XL' }
+          { name: 'M', stock: 5 },
+          { name: 'L', stock: 5 },
+          { name: 'XL', stock: 4 }
         ] 
       },
       { 
         name: 'Warna', 
         options: [
-          { name: 'Merah Kotak', image: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=80' },
-          { name: 'Biru Kotak' },
-          { name: 'Hijau Kotak' }
+          { name: 'Merah Kotak', image: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=80', stock: 5 },
+          { name: 'Biru Kotak', stock: 5 },
+          { name: 'Hijau Kotak', stock: 4 }
         ] 
       }
     ]
@@ -458,8 +458,8 @@ export const dummyProducts: Product[] = [
       { 
         name: 'Gilingan', 
         options: [
-          { name: 'Biji', image: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=80' },
-          { name: 'Bubuk' }
+          { name: 'Biji', image: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=80', stock: 17 },
+          { name: 'Bubuk', stock: 18 }
         ] 
       }
     ]
@@ -478,17 +478,17 @@ export const dummyProducts: Product[] = [
       { 
         name: 'Size', 
         options: [
-          { name: 'M' },
-          { name: 'L' },
-          { name: 'XL' }
+          { name: 'M', stock: 3 },
+          { name: 'L', stock: 3 },
+          { name: 'XL', stock: 3 }
         ] 
       },
       { 
         name: 'Warna', 
         options: [
-          { name: 'Army Green', image: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=80' },
-          { name: 'Black' },
-          { name: 'Navy' }
+          { name: 'Army Green', image: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=80', stock: 3 },
+          { name: 'Black', stock: 3 },
+          { name: 'Navy', stock: 3 }
         ] 
       }
     ]

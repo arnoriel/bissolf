@@ -51,7 +51,7 @@ export const Chatbot = () => {
     } else if (isChatOpen && chatMessages.length === 0) {
       addChatMessage({ 
         role: 'assistant', 
-        content: 'Halo! Selamat datang di **BISSOLF Store** 🤖.\n\nAda yang bisa saya bantu? Saya bisa membantu kamu:\n1. **Informasi Produk**\n2. **Pemesanan Instan**\n3. **Cek Status Pesanan**\n4. **Pembatalan Pesanan** (Ketik: "Batalkan [ID Pesanan]")' 
+        content: 'Halo! Selamat datang di **BISSOLF Store** 🤖.\n\nAda yang bisa saya bantu? Saya bisa membantu kamu:\n1. **Informasi Produk & Stok**\n2. **Pemesanan Instan**\n3. **Cek Status Pesanan**\n4. **Pembatalan Pesanan** (Ketik: "Batalkan [ID Pesanan]")' 
       });
     }
   }, [chatMessages, isChatOpen]);
@@ -59,30 +59,38 @@ export const Chatbot = () => {
   const processAIResponse = async () => {
     setIsLoading(true);
     
-    // Siapkan data konteks produk LENGKAP dengan variants
+    // Siapkan data konteks produk LENGKAP dengan variants dan stok detail
     const productContext = products.map(p => ({
+      id: p.id,
       name: p.product_name, 
       price: p.price, 
-      stock: p.stocks,
-      variants: p.variants || []
+      total_global_stock: p.stocks,
+      // Pastikan variants terkirim lengkap agar AI bisa baca strukturnya (nama & stok per varian jika ada)
+      variants: p.variants || [] 
     }));
 
     const systemPrompt = `
-      Kamu adalah asisten toko BISSOLF yang cerdas, ramah, dan sangat teliti.
+      Kamu adalah asisten toko BISSOLF yang cerdas, ramah, dan sangat teliti dalam hal stok barang.
       
-      DATA KONTEKS:
-      - Produk Tersedia: ${JSON.stringify(productContext)}
+      DATA KONTEKS REAL-TIME:
+      - Produk & Stok: ${JSON.stringify(productContext)}
       - Database Pesanan: ${JSON.stringify(orders.map(o => ({id: o.id, status: o.status, buyer: o.buyer_name, item: o.product_name, variant: o.selected_variants})))}
       
-      TUGAS UTAMA:
-      1. **PENTING: PENGECEKAN VARIAN PRODUK**:
-         - Sebelum meminta data diri, kamu WAJIB cek apakah produk memiliki \`variants\` (seperti Size, Color).
-         - Jika ADA variants dan user BELUM menyebutkan pilihannya secara spesifik: KAMU WAJIB BERTANYA varian mana yang dipilih.
-         - Contoh: "Pilihan bagus! Untuk Jaket ini tersedia Size: M, L, XL dan Warna: Army, Black. Kamu mau yang mana?"
-         - Jika TIDAK ADA variants atau user SUDAH menyebutkan pilihannya (misal: "Jaket size L warna Hitam"): BARU lanjutkan meminta data pengiriman.
+      TUGAS UTAMA & ATURAN VALIDASI:
 
-      2. PEMESANAN (Alur Data):
-         - Setelah varian clear, kumpulkan data berikut:
+      1. **VALIDASI KETERSEDIAAN STOK (CRITICAL)**:
+         - Saat user bertanya produk, kamu WAJIB menjabarkan varian yang tersedia BESERTA jumlah stoknya jika data stok per varian ada.
+         - Contoh Output: "Jaket Bomber tersedia dalam: Size M (5 pcs), Size L (2 pcs), Size XL (Habis)."
+         - **JANGAN PERNAH** membiarkan user memesan varian yang stoknya 0 atau Habis.
+         - Jika user memaksa beli yang habis, tolak dengan sopan dan tawarkan varian lain.
+         - Jika user memesan jumlah (qty) melebihi stok yang ada, beritahu sisa stok maksimal.
+
+      2. **PENGECEKAN PRE-ORDER**:
+         - Sebelum meminta data diri, pastikan user sudah memilih varian yang **VALID** dan **ADA STOKNYA**.
+         - Jika user belum sebut varian, tanya dulu: "Mau varian warna/ukuran apa kak? Stok yang ada: [Sebutkan Stok]"
+
+      3. **PEMESANAN (Alur Data)**:
+         - Setelah varian valid dan stok aman, kumpulkan data berikut:
            - Nama Lengkap
            - Nomor HP (WhatsApp)
            - Alamat Lengkap. **WAJIB FORMAT:** "Nama Jalan, Kelurahan, Kecamatan, Kota/Kabupaten, Provinsi, Kode Pos".
@@ -93,12 +101,12 @@ export const Chatbot = () => {
          
          Isi field "variant" dengan pilihan user. Jika produk tidak punya varian, isi "-".
 
-      3. TRACKING & PEMBATALAN:
+      4. **TRACKING & PEMBATALAN**:
          - Informasikan status pesanan berdasarkan database.
          - Jika user membatalkan (Batalkan ORD-xxx), tanya alasan. Lalu keluarkan JSON:
          ~~~{"action": "CANCEL_ORDER", "orderId": "ORD-xxx", "reason": "alasan"}~~~
       
-      Aturan: Gunakan Bahasa Indonesia. Bold bagian penting. Jangan memberikan instruksi transfer manual karena sistem akan memunculkan menu pembayaran otomatis.
+      Gaya Bicara: Gunakan Bahasa Indonesia yang natural tapi sopan. Bold bagian penting (Harga, Stok, Nama Produk).
     `;
 
     const apiMessages = [
@@ -255,22 +263,22 @@ export const Chatbot = () => {
                 </div>
 
                 <div className="bg-gray-900 rounded-2xl p-5 text-white">
-                   <div className="flex justify-between items-center mb-1">
+                    <div className="flex justify-between items-center mb-1">
                       <span className="text-xs text-gray-400 font-bold">Produk:</span>
                       <span className="text-xs text-white font-bold text-right w-32 truncate">{pendingOrderData?.product}</span>
-                   </div>
-                   {pendingOrderData?.variant && (
-                     <div className="flex justify-between items-center mb-3">
+                    </div>
+                    {pendingOrderData?.variant && (
+                      <div className="flex justify-between items-center mb-3">
                         <span className="text-xs text-gray-400 font-bold">Varian:</span>
                         <span className="text-xs text-gray-300 font-bold text-right">{pendingOrderData.variant}</span>
-                     </div>
-                   )}
-                   <div className="flex justify-between items-center border-t border-gray-700 pt-3">
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center border-t border-gray-700 pt-3">
                       <span className="text-xs text-gray-400 font-bold">Total Tagihan:</span>
                       <span className="font-black text-blue-400 text-lg">
                         Rp {((products.find(p => p.product_name.toLowerCase().includes(pendingOrderData?.product?.toLowerCase() || ''))?.price || 0) * (pendingOrderData?.qty || 1)).toLocaleString()}
                       </span>
-                   </div>
+                    </div>
                 </div>
 
                 <button 
@@ -357,10 +365,10 @@ export const Chatbot = () => {
         {/* Payment Selection UI */}
         {pendingOrderData && !showPaymentModal && (
           <div className="bg-white p-6 rounded-[2.5rem] shadow-2xl border-2 border-blue-600 mt-2 animate-in zoom-in-95">
-             <div className="flex items-center gap-3 mb-4">
-               <div className="bg-blue-100 p-2 rounded-xl text-blue-600"><CreditCard size={18} /></div>
-               <h4 className="font-black text-gray-900 uppercase text-xs tracking-widest">Pilih Metode Pembayaran</h4>
-             </div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-blue-100 p-2 rounded-xl text-blue-600"><CreditCard size={18} /></div>
+                <h4 className="font-black text-gray-900 uppercase text-xs tracking-widest">Pilih Metode Pembayaran</h4>
+              </div>
             <div className="space-y-3 mb-6 bg-gray-50 p-4 rounded-2xl">
               <div className="flex justify-between text-[10px] font-bold">
                 <span className="text-gray-400 uppercase">Produk</span>
