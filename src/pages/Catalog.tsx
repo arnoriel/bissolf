@@ -315,8 +315,10 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
                         
                         <div className="flex flex-wrap gap-3 md:gap-4">
                           {variant.options.map((option, optIndex) => {
-                            const hasImage = typeof option !== 'string' && option.image;
-                            const optionName = typeof option === 'string' ? option : option.name;
+                            const isObject = typeof option !== 'string';
+                            const hasImage = isObject && option.image;
+                            const optionName = isObject ? option.name : option;
+                            const priceAddon = isObject ? (option.option_price || 0) : 0;
 
                             return (
                               <div
@@ -337,10 +339,19 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
                                   </div>
                                 )}
                                 
-                                <span className={`text-[9px] md:text-xs font-bold uppercase tracking-widest text-center
-                                  ${hasImage ? 'text-gray-800' : 'text-gray-500'}`}>
-                                  {optionName}
-                                </span>
+                                <div className="flex flex-col items-center">
+                                  <span className={`text-[9px] md:text-xs font-bold uppercase tracking-widest text-center
+                                    ${hasImage ? 'text-gray-800' : 'text-gray-500'}`}>
+                                    {optionName}
+                                  </span>
+                                  
+                                  {/* LOGIK BARU: Tampilkan harga jika > 0 */}
+                                  {priceAddon > 0 && (
+                                    <span className="text-[8px] md:text-[10px] font-black text-blue-600 mt-0.5">
+                                      + Rp {priceAddon.toLocaleString()}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             );
                           })}

@@ -1,9 +1,8 @@
-// F:\projectan\bissolf\src\types.ts
-
 export interface VariantOption {
   name: string; // contoh: "Stroberi", "Vanila"
   image?: string; 
-  stock?: number; // <--- NEW: Menambahkan stok spesifik per opsi varian
+  stock?: number; // Menambahkan stok spesifik per opsi varian
+  option_price?: number; // <--- NEW: Harga tambahan untuk varian (bisa 0 atau nominal tertentu)
 }
 
 export interface ProductVariant {

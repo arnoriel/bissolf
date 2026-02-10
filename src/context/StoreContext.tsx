@@ -17,7 +17,6 @@ interface StoreContextType {
   addProduct: (product: Product) => void;
   updateProduct: (product: Product) => void;
   deleteProduct: (id: string) => void;
-  // UPDATE: Menambahkan parameter opsional variantOptionName
   updateProductStock: (id: string, qty: number, variantOptionName?: string) => void;
   initiateOrderFromLanding: (product: Product, variantLabel?: string) => void;
   resetChat: () => void;
@@ -47,7 +46,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('bissolf_orders', JSON.stringify(orders));
   }, [orders]);
 
-  // --- Chat Logic ---
   const toggleChat = (state?: boolean) => setIsChatOpen(prev => state ?? !prev);
   
   const addChatMessage = (msg: ChatMessage) => {
@@ -58,7 +56,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setChatMessages([]);
   };
 
-  // --- Product Management ---
   const addProduct = (product: Product) => {
     setProducts(prev => [product, ...prev]);
   };
@@ -71,43 +68,32 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setProducts(prev => prev.filter(p => p.id !== id));
   };
 
-  // --- UPDATE: Logic Stok Varian ---
-  // Fungsi ini sekarang bisa menangani pengurangan stok Global DAN Stok Varian
   const updateProductStock = (id: string, qty: number, variantOptionName?: string) => {
     setProducts(prev => prev.map(p => {
       if (p.id === id) {
-        // 1. Update Stok Global Product
         const newGlobalStock = Math.max(0, p.stocks - qty);
-        
-        // 2. Update Stok Varian Spesifik (jika ada variantOptionName)
         let updatedVariants = p.variants;
         
         if (variantOptionName && p.variants) {
            updatedVariants = p.variants.map(v => ({
              ...v,
              options: v.options.map(opt => {
-               // Cek apakah nama option ini ada di dalam string varian yang dipilih
-               // Misal: variantOptionName = "Rasa: Stroberi", opt.name = "Stroberi" -> Match!
                if (variantOptionName.includes(opt.name)) {
                  const currentVariantStock = opt.stock !== undefined ? opt.stock : 0;
-                 // Jika qty positif = mengurangi stok. Jika negatif = menambah stok (untuk cancel order)
                  return { ...opt, stock: Math.max(0, currentVariantStock - qty) }; 
                }
                return opt;
              })
            }));
         }
-
         return { ...p, stocks: newGlobalStock, variants: updatedVariants };
       }
       return p;
     }));
   };
 
-  // --- Order Management ---
   const createOrder = (order: Order) => {
     setOrders(prev => [order, ...prev]);
-    // UPDATE: Kirim juga selected_variants agar stok varian spesifik ikut berkurang
     updateProductStock(order.id_product, order.quantity, order.selected_variants);
   };
 
@@ -117,62 +103,53 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const cancelOrder = (orderId: string, reason: string) => {
     const order = orders.find(o => o.id === orderId);
-    
-    if (!order) {
-      return { success: false, message: "Pesanan tidak ditemukan di database." };
-    }
+    if (!order) return { success: false, message: "Pesanan tidak ditemukan." };
 
     if (order.status !== 'Packaging') {
-      return { 
-        success: false, 
-        message: `Maaf, pesanan statusnya sudah "${order.status}" dan tidak dapat dibatalkan secara otomatis.` 
-      };
+      return { success: false, message: `Status "${order.status}" tidak bisa dibatalkan.` };
     }
 
-    // 1. Ubah status pesanan menjadi Canceled
     setOrders(prev => prev.map(o => 
-      o.id === orderId 
-        ? { ...o, status: 'Canceled' as OrderStatus, cancel_reason: reason } 
-        : o
+      o.id === orderId ? { ...o, status: 'Canceled', cancel_reason: reason } : o
     ));
 
-    // 2. Kembalikan stok produk (Pass quantity negatif untuk menambah stok kembali)
-    // UPDATE: Kirim juga selected_variants agar stok varian dikembalikan
     updateProductStock(order.id_product, -order.quantity, order.selected_variants);
-
-    return { 
-      success: true, 
-      message: "Pesanan berhasil dibatalkan dan stok produk telah dikembalikan." 
-    };
+    return { success: true, message: "Pesanan dibatalkan, stok dikembalikan." };
   };
 
+  // --- UPDATE LOGIC DISINI ---
   const initiateOrderFromLanding = (product: Product, variantLabel?: string) => {
     setIsChatOpen(true);
     
+    let additionalPrice = 0;
+    
+    // Cari apakah ada additional price dari variant yang dipilih
+    if (variantLabel && product.variants) {
+      product.variants.forEach(v => {
+        v.options.forEach(opt => {
+          // Jika nama option ada di dalam label (misal "Stroberi" ada di "Rasa: Stroberi")
+          if (variantLabel.includes(opt.name)) {
+            additionalPrice += opt.option_price || 0;
+          }
+        });
+      });
+    }
+
+    const totalPrice = product.price + additionalPrice;
+    
     const content = variantLabel 
-      ? `Halo BISSOLF! Saya tertarik untuk memesan ${product.product_name} dengan varian ${variantLabel}` 
-      : `Halo BISSOLF! Saya tertarik untuk memesan ${product.product_name}`;
+      ? `Halo BISSOLF! Saya tertarik untuk memesan ${product.product_name} (${variantLabel}). Harga total: Rp${totalPrice.toLocaleString('id-ID')}` 
+      : `Halo BISSOLF! Saya tertarik untuk memesan ${product.product_name}.`;
     
     addChatMessage({ role: 'user', content: content });
   };
 
   return (
     <StoreContext.Provider value={{
-      products, 
-      orders, 
-      isChatOpen, 
-      toggleChat, 
-      chatMessages, 
-      addChatMessage, 
-      createOrder, 
-      updateOrderStatus, 
-      updateProductStock, 
-      initiateOrderFromLanding, 
-      resetChat, 
-      addProduct, 
-      updateProduct, 
-      deleteProduct,
-      cancelOrder
+      products, orders, isChatOpen, toggleChat, chatMessages, 
+      addChatMessage, createOrder, updateOrderStatus, updateProductStock, 
+      initiateOrderFromLanding, resetChat, addProduct, updateProduct, 
+      deleteProduct, cancelOrder
     }}>
       {children}
     </StoreContext.Provider>
@@ -181,8 +158,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
 export const useStore = () => {
   const context = useContext(StoreContext);
-  if (!context) {
-    throw new Error('useStore must be used within StoreProvider');
-  }
+  if (!context) throw new Error('useStore must be used within StoreProvider');
   return context;
 };

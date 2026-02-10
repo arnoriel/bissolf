@@ -1,4 +1,4 @@
-// /Users/azriel/Project/bissolf/src/components/Chatbot.tsx
+// F:\projectan\bissolf\src\components\Chatbot.tsx
 
 import { useState, useEffect, useRef } from 'react';
 import { X, Send, Loader2, Wallet, CreditCard, Bot, Copy, Check } from 'lucide-react';
@@ -63,50 +63,44 @@ export const Chatbot = () => {
     const productContext = products.map(p => ({
       id: p.id,
       name: p.product_name, 
-      price: p.price, 
+      base_price: p.price, 
       total_global_stock: p.stocks,
-      // Pastikan variants terkirim lengkap agar AI bisa baca strukturnya (nama & stok per varian jika ada)
       variants: p.variants || [] 
     }));
 
     const systemPrompt = `
-      Kamu adalah asisten toko BISSOLF yang cerdas, ramah, dan sangat teliti dalam hal stok barang.
+      Kamu adalah asisten toko BISSOLF yang cerdas dan teliti.
       
       DATA KONTEKS REAL-TIME:
       - Produk & Stok: ${JSON.stringify(productContext)}
       - Database Pesanan: ${JSON.stringify(orders.map(o => ({id: o.id, status: o.status, buyer: o.buyer_name, item: o.product_name, variant: o.selected_variants})))}
       
+      ATURAN PENTING PEMBAYARAN:
+      - JANGAN PERNAH memberikan nomor rekening manual atau menyuruh user transfer ke bank tertentu di dalam chat.
+      - Saat data pesanan lengkap, berikan ringkasan pesanan saja, lalu katakan: "Silakan pilih metode pembayaran pada form yang muncul di bawah ini untuk menyelesaikan pesanan Anda."
+      - Kamu WAJIB menyertakan JSON di akhir pesan menggunakan pemisah ~~~ untuk memicu sistem pembayaran otomatis.
+
       TUGAS UTAMA & ATURAN VALIDASI:
 
-      1. **VALIDASI KETERSEDIAAN STOK (CRITICAL)**:
-         - Saat user bertanya produk, kamu WAJIB menjabarkan varian yang tersedia BESERTA jumlah stoknya jika data stok per varian ada.
-         - Contoh Output: "Jaket Bomber tersedia dalam: Size M (5 pcs), Size L (2 pcs), Size XL (Habis)."
-         - **JANGAN PERNAH** membiarkan user memesan varian yang stoknya 0 atau Habis.
-         - Jika user memaksa beli yang habis, tolak dengan sopan dan tawarkan varian lain.
-         - Jika user memesan jumlah (qty) melebihi stok yang ada, beritahu sisa stok maksimal.
+      1. **VALIDASI KETERSEDIAAN STOK**:
+          - Sebutkan varian yang tersedia dan stoknya. Jika ada tambahan harga (option_price > 0), informasikan dengan jelas.
+          - JANGAN biarkan user memesan varian yang stoknya 0.
 
-      2. **PENGECEKAN PRE-ORDER**:
-         - Sebelum meminta data diri, pastikan user sudah memilih varian yang **VALID** dan **ADA STOKNYA**.
-         - Jika user belum sebut varian, tanya dulu: "Mau varian warna/ukuran apa kak? Stok yang ada: [Sebutkan Stok]"
+      2. **PEMESANAN (Alur Data)**:
+          - Kumpulkan data berikut satu per satu secara sopan:
+            * Nama Lengkap.
+            * Nomor HP (Minta user memberikan contoh format: **08xxxxxxxxx**).
+            * Alamat Lengkap (Minta user merinci: **Nama Jalan/Tempat, Kelurahan, Kecamatan, Kota/Kabupaten, Pulau, dan Kode Pos**).
+            * Jumlah Pesanan.
+          - Jika user memberikan data yang tidak lengkap (misal: alamat tanpa kode pos), minta secara halus untuk melengkapinya.
+          - SETELAH semua data di atas lengkap, keluarkan ringkasan dan JSON persis seperti ini:
+          ~~~{"action": "PAYMENT", "product": "nama_produk", "qty": 1, "name": "user", "phone": "08x", "location": "Alamat Lengkap", "variant": "Varian yang dipilih"}~~~
 
-      3. **PEMESANAN (Alur Data)**:
-         - Setelah varian valid dan stok aman, kumpulkan data berikut:
-           - Nama Lengkap
-           - Nomor HP (WhatsApp)
-           - Alamat Lengkap. **WAJIB FORMAT:** "Nama Jalan, Kelurahan, Kecamatan, Kota/Kabupaten, Provinsi, Kode Pos".
-           - Jumlah Pesanan
-         
-         SETELAH semua data lengkap, berikan ringkasan dan keluarkan JSON persis seperti format ini:
-         ~~~{"action": "PAYMENT", "product": "nama_produk", "qty": 1, "name": "user", "phone": "08x", "location": "Alamat Lengkap", "variant": "Varian yang dipilih"}~~~
-         
-         Isi field "variant" dengan pilihan user. Jika produk tidak punya varian, isi "-".
-
-      4. **TRACKING & PEMBATALAN**:
-         - Informasikan status pesanan berdasarkan database.
-         - Jika user membatalkan (Batalkan ORD-xxx), tanya alasan. Lalu keluarkan JSON:
-         ~~~{"action": "CANCEL_ORDER", "orderId": "ORD-xxx", "reason": "alasan"}~~~
+      3. **TRACKING & PEMBATALAN**:
+          - Jika user membatalkan (Batalkan ORD-xxx), keluarkan JSON:
+          ~~~{"action": "CANCEL_ORDER", "orderId": "ORD-xxx", "reason": "alasan"}~~~
       
-      Gaya Bicara: Gunakan Bahasa Indonesia yang natural tapi sopan. Bold bagian penting (Harga, Stok, Nama Produk).
+      Gaya Bicara: Sopan, gunakan Bahasa Indonesia, Bold bagian penting.
     `;
 
     const apiMessages = [
@@ -123,7 +117,7 @@ export const Chatbot = () => {
         
         if (parts.length > 1) {
           try {
-            const actionData = JSON.parse(parts[1]);
+            const actionData = JSON.parse(parts[1].trim());
             
             if (actionData.action === 'PAYMENT') {
               setPendingOrderData(actionData); 
@@ -179,6 +173,24 @@ export const Chatbot = () => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const calculateTotalBill = (prodName: string, variantName: string, qty: number) => {
+    const product = products.find(p => p.product_name.toLowerCase().includes(prodName.toLowerCase()));
+    if (!product) return 0;
+
+    let additionalPrice = 0;
+    if (variantName && product.variants) {
+      product.variants.forEach(v => {
+        v.options.forEach(opt => {
+          if (variantName.includes(opt.name)) {
+            additionalPrice += (opt.option_price || 0);
+          }
+        });
+      });
+    }
+
+    return (product.price + additionalPrice) * qty;
+  };
+
   const confirmPayment = async () => {
     if (!pendingOrderData || !paymentInput) return;
 
@@ -189,15 +201,29 @@ export const Chatbot = () => {
       p.product_name.toLowerCase().includes(pendingOrderData.product.toLowerCase())
     ) || products[0];
     
+    let additionalPrice = 0;
+    if (pendingOrderData.variant && product.variants) {
+      product.variants.forEach(v => {
+        v.options.forEach(opt => {
+          if (pendingOrderData.variant.includes(opt.name)) {
+            additionalPrice += (opt.option_price || 0);
+          }
+        });
+      });
+    }
+
+    const finalUnitPrice = product.price + additionalPrice;
+    const finalTotalPrice = finalUnitPrice * pendingOrderData.qty;
+
     const orderId = `ORD-${Date.now().toString().slice(-6)}`;
 
     const newOrder: Order = {
       id: orderId,
       id_product: product.id,
       product_name: product.product_name,
-      product_price: product.price,
+      product_price: finalUnitPrice,
       quantity: pendingOrderData.qty,
-      total_price: product.price * pendingOrderData.qty,
+      total_price: finalTotalPrice,
       buyer_name: pendingOrderData.name,
       buyer_phone: pendingOrderData.phone,
       buyer_location: pendingOrderData.location || "Alamat tidak terdeteksi",
@@ -216,7 +242,7 @@ export const Chatbot = () => {
     
     addChatMessage({ 
       role: 'assistant', 
-      content: `### ✅ Pembayaran Berhasil!\n\nPembayaran via **${selectedMethod}** telah diverifikasi.\n\n**Detail Pesanan:**\n- **Produk:** ${product.product_name}\n- **Varian:** ${newOrder.selected_variants}\n- **Order ID:** \`${orderId}\` (Klik ID untuk menyalin)\n\nTerima kasih! Pesananmu sedang kami siapkan untuk pengiriman.` 
+      content: `### ✅ Pembayaran Berhasil!\n\nPembayaran via **${selectedMethod}** telah diverifikasi.\n\n**Detail Pesanan:**\n- **Produk:** ${product.product_name}\n- **Varian:** ${newOrder.selected_variants}\n- **Total:** Rp${finalTotalPrice.toLocaleString('id-ID')}\n- **Order ID:** \`${orderId}\` \n\nTerima kasih! Pesananmu sedang kami siapkan untuk pengiriman.` 
     });
   };
 
@@ -276,7 +302,7 @@ export const Chatbot = () => {
                     <div className="flex justify-between items-center border-t border-gray-700 pt-3">
                       <span className="text-xs text-gray-400 font-bold">Total Tagihan:</span>
                       <span className="font-black text-blue-400 text-lg">
-                        Rp {((products.find(p => p.product_name.toLowerCase().includes(pendingOrderData?.product?.toLowerCase() || ''))?.price || 0) * (pendingOrderData?.qty || 1)).toLocaleString()}
+                        Rp {calculateTotalBill(pendingOrderData?.product || '', pendingOrderData?.variant || '', pendingOrderData?.qty || 1).toLocaleString()}
                       </span>
                     </div>
                 </div>
@@ -362,7 +388,7 @@ export const Chatbot = () => {
           </div>
         )}
         
-        {/* Payment Selection UI */}
+        {/* Payment Selection UI - INI YANG MEMUNCULKAN FORM PEMBAYARAN */}
         {pendingOrderData && !showPaymentModal && (
           <div className="bg-white p-6 rounded-[2.5rem] shadow-2xl border-2 border-blue-600 mt-2 animate-in zoom-in-95">
               <div className="flex items-center gap-3 mb-4">
@@ -383,7 +409,7 @@ export const Chatbot = () => {
               <div className="flex justify-between items-center pt-2 border-t border-gray-200">
                 <span className="text-xs font-black">Total Bayar</span>
                 <span className="text-blue-600 font-black text-base">
-                  Rp {((products.find(p => p.product_name.toLowerCase().includes(pendingOrderData.product.toLowerCase()))?.price || 0) * pendingOrderData.qty).toLocaleString()}
+                  Rp {calculateTotalBill(pendingOrderData.product, pendingOrderData.variant, pendingOrderData.qty).toLocaleString()}
                 </span>
               </div>
             </div>

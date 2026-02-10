@@ -14,12 +14,11 @@ import {
   DollarSign as MoneyIcon,
   Box as BoxIcon,
   Image as ImageIconAlt,
-  Sliders as SlidersIcon,
-  List as ListIcon
+  Sliders as SlidersIcon
 } from 'lucide-react';
 import type { Product, ProductVariant, VariantOption } from '../types';
 
-// Interface lokal untuk form 
+// Interface lokal untuk form agar sinkron dengan state
 interface FormVariant {
   name: string;
   options: VariantOption[];
@@ -35,7 +34,7 @@ export const ProductsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
-  // Form State
+  // Form State - Mendukung detail variant option lengkap
   const [formData, setFormData] = useState<Partial<Product> & { variants: FormVariant[] }>({
     product_name: '',
     product_sku: '',
@@ -72,13 +71,18 @@ export const ProductsPage = () => {
   const openModal = (product?: Product) => {
     if (product) {
       setEditingProduct(product);
-      // Mapping variants ke format form (pastikan stok dan image terbawa)
+      // MAPPING LOGIC: Jika option_price 0 atau kosong, tetap di-set 0 (Original)
       const mappedVariants = (product.variants || []).map(v => ({
         name: v.name,
         options: v.options.map(opt => 
           typeof opt === 'string' 
-            ? { name: opt, image: undefined, stock: 0 } 
-            : { name: opt.name, image: opt.image, stock: opt.stock || 0 }
+            ? { name: opt, image: undefined, stock: 0, option_price: 0 } 
+            : { 
+                name: opt.name, 
+                image: opt.image, 
+                stock: opt.stock || 0, 
+                option_price: opt.option_price || 0 
+              }
         )
       }));
       setFormData({
@@ -127,8 +131,12 @@ export const ProductsPage = () => {
 
   const addOptionToVariant = (variantIndex: number) => {
     const newVariants = [...(formData.variants || [])];
-    // Default stock 0 saat add option baru
-    newVariants[variantIndex].options.push({ name: '', image: undefined, stock: 0 });
+    newVariants[variantIndex].options.push({ 
+      name: '', 
+      image: undefined, 
+      stock: 0, 
+      option_price: 0 // Default ke 0 (Original)
+    });
     setFormData({ ...formData, variants: newVariants });
   };
 
@@ -144,10 +152,15 @@ export const ProductsPage = () => {
     setFormData({ ...formData, variants: newVariants });
   };
 
-  // FUNGSI BARU: Update Stok Per Opsi
   const updateOptionStock = (variantIndex: number, optionIndex: number, stock: string) => {
     const newVariants = [...(formData.variants || [])];
     newVariants[variantIndex].options[optionIndex].stock = Number(stock);
+    setFormData({ ...formData, variants: newVariants });
+  };
+
+  const updateOptionPrice = (variantIndex: number, optionIndex: number, price: string) => {
+    const newVariants = [...(formData.variants || [])];
+    newVariants[variantIndex].options[optionIndex].option_price = Number(price);
     setFormData({ ...formData, variants: newVariants });
   };
 
@@ -160,7 +173,6 @@ export const ProductsPage = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Bersihkan variant kosong / tanpa nama
     const cleanedVariants: ProductVariant[] = (formData.variants || [])
       .filter(v => v.name.trim() !== '')
       .map(v => ({
@@ -172,7 +184,7 @@ export const ProductsPage = () => {
       ...formData,
       id: editingProduct ? editingProduct.id : Date.now().toString(),
       price: Number(formData.price),
-      stocks: Number(formData.stocks), // Ini stok global
+      stocks: Number(formData.stocks),
       variants: cleanedVariants.length > 0 ? cleanedVariants : undefined,
     } as Product;
 
@@ -221,7 +233,7 @@ export const ProductsPage = () => {
         </div>
       </div>
 
-      {/* MOBILE VIEW: CARD LIST (Visible < md) */}
+      {/* MOBILE VIEW: CARD LIST */}
       <div className="grid grid-cols-1 gap-4 md:hidden">
         {paginatedProducts.length > 0 ? (
           paginatedProducts.map(product => (
@@ -262,7 +274,7 @@ export const ProductsPage = () => {
         )}
       </div>
 
-      {/* DESKTOP VIEW: TABLE (Visible >= md) */}
+      {/* DESKTOP VIEW: TABLE */}
       <div className="hidden md:block bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -270,7 +282,7 @@ export const ProductsPage = () => {
               <tr className="bg-gray-50/50 border-b border-gray-100 text-gray-400 text-[10px] uppercase tracking-widest font-black">
                 <th className="p-6">Produk</th>
                 <th className="p-6">Varian & Stok Detail</th>
-                <th className="p-6">Harga</th>
+                <th className="p-6">Harga Dasar</th>
                 <th className="p-6">Stok Total</th>
                 <th className="p-6 text-right">Aksi</th>
               </tr>
@@ -300,7 +312,12 @@ export const ProductsPage = () => {
                               <div className="flex flex-wrap gap-1">
                                 {v.options.map((opt, optIdx) => (
                                   <span key={optIdx} className="text-[10px] bg-white border border-gray-200 text-gray-600 px-2 py-0.5 rounded-md shadow-sm">
-                                    {opt.name} <span className={`font-black ml-0.5 ${ (opt.stock || 0) <= 0 ? 'text-red-500' : 'text-blue-600' }`}>({opt.stock || 0})</span>
+                                    {opt.name} 
+                                    <span className={`font-black ml-1 ${ (opt.stock || 0) <= 0 ? 'text-red-500' : 'text-blue-600' }`}>({opt.stock || 0})</span>
+                                    {/* Jika option_price ada dan bukan 0, tampilkan harga khusus */}
+                                    {opt.option_price && opt.option_price > 0 && (
+                                      <span className="ml-1 text-orange-600 font-bold">@ Rp{opt.option_price.toLocaleString()}</span>
+                                    )}
                                   </span>
                                 ))}
                               </div>
@@ -363,7 +380,7 @@ export const ProductsPage = () => {
         </div>
       </div>
       
-      {/* Mobile Pagination (Simple) */}
+      {/* Mobile Pagination */}
       <div className="md:hidden mt-4 flex justify-between items-center bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
          <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="text-sm font-bold text-gray-600 disabled:opacity-50">Previous</button>
          <span className="text-xs text-gray-400 font-medium">Page {currentPage} of {totalPages}</span>
@@ -374,7 +391,7 @@ export const ProductsPage = () => {
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4">
           <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setIsModalOpen(false)} />
-          <div className="bg-white w-full max-w-2xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+          <div className="bg-white w-full max-w-3xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-300 flex flex-col max-h-[95vh]">
             
             <div className="p-6 md:p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 shrink-0">
               <h3 className="text-lg md:text-xl font-black text-gray-900">{editingProduct ? 'Edit Produk' : 'Tambah Produk'}</h3>
@@ -424,10 +441,10 @@ export const ProductsPage = () => {
                   />
                 </div>
 
-                {/* HARGA */}
+                {/* HARGA DASAR */}
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                    <MoneyIcon size={14}/> Harga (Rp)
+                    <MoneyIcon size={14}/> Harga Dasar (Rp)
                   </label>
                   <input 
                     required 
@@ -465,9 +482,7 @@ export const ProductsPage = () => {
                   />
                 </div>
 
-                {/* ──────────────────────────────────────────────── */}
-                {/* VARIANT SECTION - SUPPORT STOK & GAMBAR PER OPSI */}
-                {/* ──────────────────────────────────────────────── */}
+                {/* VARIANT SECTION */}
                 <div className="md:col-span-2 space-y-5 pt-6 border-t border-dashed border-gray-200">
                   <div className="flex justify-between items-center">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider flex items-center gap-2">
@@ -492,7 +507,7 @@ export const ProductsPage = () => {
                     <div key={vIndex} className="bg-gray-50 p-3 md:p-4 rounded-2xl border border-gray-200 relative group">
                       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-3">
                         <input 
-                          placeholder="Nama (Mis: Warna)" 
+                          placeholder="Nama Varian (Mis: Ukuran)" 
                           value={variant.name}
                           onChange={(e) => updateVariantName(vIndex, e.target.value)}
                           className="w-full sm:flex-1 bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none"
@@ -515,47 +530,59 @@ export const ProductsPage = () => {
                         </div>
                       </div>
 
-                      {/* List Opsi + Stok + Gambar */}
+                      {/* List Opsi + Stok + option_price + Gambar */}
                       <div className="space-y-2 pl-0 sm:pl-4 sm:border-l-2 sm:border-gray-200 sm:ml-2">
-                        {/* Header Kecil untuk Kolom */}
                         {variant.options.length > 0 && (
-                           <div className="hidden sm:flex gap-2 text-[10px] text-gray-400 font-bold uppercase tracking-wider px-2">
+                            <div className="hidden sm:flex gap-2 text-[10px] text-gray-400 font-bold uppercase tracking-wider px-2">
                               <span className="flex-1">Nama Opsi</span>
-                              <span className="w-20">Stok</span>
-                              <span className="w-40">URL Gambar (Opsional)</span>
+                              <span className="w-24">Harga (Rp)</span>
+                              <span className="w-16">Stok</span>
+                              <span className="w-32">URL Gambar</span>
                               <span className="w-8"></span>
-                           </div>
+                            </div>
                         )}
 
                         {variant.options.map((option, oIndex) => (
-                          <div key={oIndex} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2 bg-white p-2 rounded-xl border border-gray-200">
+                          <div key={oIndex} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-white p-2 rounded-xl border border-gray-200">
                             {/* Input Nama Opsi */}
                             <input 
-                              placeholder="Nama (Mis: Merah)" 
+                              placeholder="Nama (Mis: XL)" 
                               value={option.name}
                               onChange={(e) => updateOptionName(vIndex, oIndex, e.target.value)}
                               className="flex-1 px-3 py-2 text-sm border-none bg-gray-50 sm:bg-transparent rounded-lg focus:ring-1 focus:ring-blue-400 outline-none font-medium"
                             />
                             
-                            <div className="flex gap-2 w-full sm:w-auto">
+                            <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full sm:w-auto">
+                                {/* INPUT HARGA: Jika 0, tampilkan string kosong agar placeholder terlihat */}
+                                <div className="relative flex-1 sm:w-25">
+                                  <input 
+                                    type="number"
+                                    placeholder="0 (Original)" 
+                                    value={option.option_price === 0 ? '' : option.option_price}
+                                    onChange={(e) => updateOptionPrice(vIndex, oIndex, e.target.value)}
+                                    title="Kosongkan untuk harga variant original"
+                                    className="w-full pl-6 pr-2 py-2 text-[11px] bg-gray-50 border border-gray-100 rounded-lg focus:ring-1 focus:ring-blue-400 outline-none font-bold"
+                                  />
+                                  <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] text-gray-400 font-bold">Rp</span>
+                                </div>
+
                                 {/* Input Stok Opsi */}
-                                <div className="relative w-full sm:w-20">
+                                <div className="relative w-16">
                                   <input 
                                     type="number"
                                     placeholder="Stok" 
                                     value={option.stock ?? 0}
                                     onChange={(e) => updateOptionStock(vIndex, oIndex, e.target.value)}
-                                    className="w-full px-3 py-2 text-sm text-center bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-400 outline-none"
+                                    className="w-full px-2 py-2 text-[11px] text-center bg-gray-50 border border-gray-100 rounded-lg focus:ring-1 focus:ring-blue-400 outline-none"
                                   />
-                                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-gray-400 font-bold sm:hidden">Qty</span>
                                 </div>
 
                                 {/* Input URL Gambar */}
                                 <input 
-                                  placeholder="URL Img" 
+                                  placeholder="URL Gambar" 
                                   value={option.image || ''}
                                   onChange={(e) => updateOptionImage(vIndex, oIndex, e.target.value)}
-                                  className="w-full sm:w-40 px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-400 outline-none"
+                                  className="flex-1 sm:w-32 px-3 py-2 text-[10px] bg-gray-50 border border-gray-100 rounded-lg focus:ring-1 focus:ring-blue-400 outline-none"
                                 />
 
                                 <button 
@@ -575,36 +602,15 @@ export const ProductsPage = () => {
                     </div>
                   ))}
                 </div>
-
-                {/* DESKRIPSI */}
-                <div className="md:col-span-2 space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                    <ListIcon size={14}/> Deskripsi
-                  </label>
-                  <textarea 
-                    rows={4} 
-                    value={formData.description || ''} 
-                    onChange={e => setFormData({...formData, description: e.target.value})} 
-                    className="w-full bg-gray-50 border-none rounded-2xl px-5 py-3 focus:ring-2 focus:ring-blue-500 transition outline-none text-sm font-medium" 
-                    placeholder="Ceritakan tentang produk ini..." 
-                  />
-                </div>
               </div>
 
-              {/* BUTTONS */}
-              <div className="mt-8 md:mt-10 flex gap-4 pb-4 md:pb-0">
-                <button 
-                  type="button" 
-                  onClick={() => setIsModalOpen(false)} 
-                  className="flex-1 bg-gray-100 text-gray-600 font-bold py-3 md:py-4 rounded-2xl hover:bg-gray-200 transition active:scale-95 text-sm"
-                >
-                  Batal
-                </button>
+              {/* ACTION BUTTONS */}
+              <div className="mt-8 flex gap-3">
                 <button 
                   type="submit" 
-                  className="flex-1 bg-blue-600 text-white font-bold py-3 md:py-4 rounded-2xl hover:bg-blue-700 shadow-lg shadow-blue-100 transition active:scale-95 text-sm"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-blue-100 transition active:scale-[0.98]"
                 >
-                  {editingProduct ? 'Simpan' : 'Tambah'}
+                  {editingProduct ? 'Simpan Perubahan' : 'Tambah Produk Baru'}
                 </button>
               </div>
             </form>
