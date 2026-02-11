@@ -1,24 +1,25 @@
 // F:\projectan\bissolf\src\components\Chatbot.tsx
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Send, Loader2, Wallet, CreditCard, Bot, Copy, Check } from 'lucide-react';
+import { X, Send, Loader2, Wallet, CreditCard, Bot, Copy, Check, Trash2 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { getAIResponse } from '../lib/ai';
 import type { Order } from '../types';
 import ReactMarkdown from 'react-markdown';
 
 export const Chatbot = () => {
-  const { 
-    isChatOpen, 
-    toggleChat, 
-    chatMessages, 
-    addChatMessage, 
-    createOrder, 
-    products, 
+  const {
+    isChatOpen,
+    toggleChat,
+    chatMessages,
+    addChatMessage,
+    createOrder,
+    products,
     orders,
-    cancelOrder 
+    cancelOrder,
+    resetChat
   } = useStore();
-  
+
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [pendingOrderData, setPendingOrderData] = useState<any>(null);
@@ -29,12 +30,18 @@ export const Chatbot = () => {
   const [selectedMethod, setSelectedMethod] = useState<string>('');
   const [paymentInput, setPaymentInput] = useState('');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  
+
   // --- Copy Feedback State ---
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleReset = () => {
+    if (window.confirm('Apakah Anda yakin ingin menghapus semua riwayat chat?')) {
+      resetChat();
+    }
   };
 
   useEffect(() => {
@@ -49,23 +56,23 @@ export const Chatbot = () => {
         processAIResponse();
       }
     } else if (isChatOpen && chatMessages.length === 0) {
-      addChatMessage({ 
-        role: 'assistant', 
-        content: 'Halo! Selamat datang di **BISSOLF Store** 🤖.\n\nAda yang bisa saya bantu? Saya bisa membantu kamu:\n1. **Informasi Produk & Stok**\n2. **Pemesanan Instan**\n3. **Cek Status Pesanan**\n4. **Pembatalan Pesanan** (Ketik: "Batalkan [ID Pesanan]")' 
+      addChatMessage({
+        role: 'assistant',
+        content: 'Halo! Selamat datang di **BISSOLF Store** 🤖.\n\nAda yang bisa saya bantu? Saya bisa membantu kamu:\n1. **Informasi Produk & Stok**\n2. **Pemesanan Instan**\n3. **Cek Status Pesanan**\n4. **Pembatalan Pesanan** (Ketik: "Batalkan [ID Pesanan]")'
       });
     }
   }, [chatMessages, isChatOpen]);
 
   const processAIResponse = async () => {
     setIsLoading(true);
-    
+
     // Siapkan data konteks produk LENGKAP dengan variants dan stok detail
     const productContext = products.map(p => ({
       id: p.id,
-      name: p.product_name, 
-      base_price: p.price, 
+      name: p.product_name,
+      base_price: p.price,
       total_global_stock: p.stocks,
-      variants: p.variants || [] 
+      variants: p.variants || []
     }));
 
     const systemPrompt = `
@@ -73,7 +80,7 @@ export const Chatbot = () => {
       
       DATA KONTEKS REAL-TIME:
       - Produk & Stok: ${JSON.stringify(productContext)}
-      - Database Pesanan: ${JSON.stringify(orders.map(o => ({id: o.id, status: o.status, buyer: o.buyer_name, item: o.product_name, variant: o.selected_variants})))}
+      - Database Pesanan: ${JSON.stringify(orders.map(o => ({ id: o.id, status: o.status, buyer: o.buyer_name, item: o.product_name, variant: o.selected_variants })))}
       
       ATURAN PENTING PEMBAYARAN:
       - JANGAN PERNAH memberikan nomor rekening manual atau menyuruh user transfer ke bank tertentu di dalam chat.
@@ -110,31 +117,31 @@ export const Chatbot = () => {
 
     try {
       const reply = await getAIResponse(apiMessages);
-      
+
       if (reply) {
         const parts = reply.split('~~~');
         const naturalText = parts[0].trim();
-        
+
         if (parts.length > 1) {
           try {
             const actionData = JSON.parse(parts[1].trim());
-            
+
             if (actionData.action === 'PAYMENT') {
-              setPendingOrderData(actionData); 
+              setPendingOrderData(actionData);
               addChatMessage({ role: 'assistant', content: naturalText });
-            } 
+            }
             else if (actionData.action === 'CANCEL_ORDER') {
               const result = cancelOrder(actionData.orderId, actionData.reason);
-              
+
               if (result.success) {
-                addChatMessage({ 
-                  role: 'assistant', 
-                  content: `✅ **Pesanan Berhasil Dibatalkan**\n\nPesanan \`${actionData.orderId}\` telah resmi dibatalkan dengan alasan: *${actionData.reason}*.\n\nStatus di sistem telah diperbarui menjadi **Canceled**.` 
+                addChatMessage({
+                  role: 'assistant',
+                  content: `✅ **Pesanan Berhasil Dibatalkan**\n\nPesanan \`${actionData.orderId}\` telah resmi dibatalkan dengan alasan: *${actionData.reason}*.\n\nStatus di sistem telah diperbarui menjadi **Canceled**.`
                 });
               } else {
-                addChatMessage({ 
-                  role: 'assistant', 
-                  content: `❌ **Gagal Membatalkan:** ${result.message}` 
+                addChatMessage({
+                  role: 'assistant',
+                  content: `❌ **Gagal Membatalkan:** ${result.message}`
                 });
               }
             }
@@ -197,10 +204,10 @@ export const Chatbot = () => {
     setIsProcessingPayment(true);
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    const product = products.find(p => 
+    const product = products.find(p =>
       p.product_name.toLowerCase().includes(pendingOrderData.product.toLowerCase())
     ) || products[0];
-    
+
     let additionalPrice = 0;
     if (pendingOrderData.variant && product.variants) {
       product.variants.forEach(v => {
@@ -235,14 +242,14 @@ export const Chatbot = () => {
     };
 
     createOrder(newOrder);
-    
+
     setIsProcessingPayment(false);
     setShowPaymentModal(false);
     setPendingOrderData(null);
-    
-    addChatMessage({ 
-      role: 'assistant', 
-      content: `### ✅ Pembayaran Berhasil!\n\nPembayaran via **${selectedMethod}** telah diverifikasi.\n\n**Detail Pesanan:**\n- **Produk:** ${product.product_name}\n- **Varian:** ${newOrder.selected_variants}\n- **Total:** Rp${finalTotalPrice.toLocaleString('id-ID')}\n- **Order ID:** \`${orderId}\` \n\nTerima kasih! Pesananmu sedang kami siapkan untuk pengiriman.` 
+
+    addChatMessage({
+      role: 'assistant',
+      content: `### ✅ Pembayaran Berhasil!\n\nPembayaran via **${selectedMethod}** telah diverifikasi.\n\n**Detail Pesanan:**\n- **Produk:** ${product.product_name}\n- **Varian:** ${newOrder.selected_variants}\n- **Total:** Rp${finalTotalPrice.toLocaleString('id-ID')}\n- **Order ID:** \`${orderId}\` \n\nTerima kasih! Pesananmu sedang kami siapkan untuk pengiriman.`
     });
   };
 
@@ -250,13 +257,13 @@ export const Chatbot = () => {
 
   return (
     <div className="fixed bottom-4 right-4 w-[400px] h-[650px] bg-white shadow-2xl rounded-[2.5rem] flex flex-col z-50 border border-gray-100 overflow-hidden animate-in slide-in-from-bottom-8 duration-300">
-      
+
       {/* --- PAYMENT MODAL --- */}
       {showPaymentModal && (
         <div className="absolute inset-0 z-[60] bg-white/95 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-300">
           <div className="w-full bg-white rounded-[2rem] shadow-2xl border border-gray-100 p-8 relative">
             {!isProcessingPayment && (
-               <button onClick={() => setShowPaymentModal(false)} className="absolute top-6 right-6 text-gray-400 hover:text-red-500 transition"><X size={24} /></button>
+              <button onClick={() => setShowPaymentModal(false)} className="absolute top-6 right-6 text-gray-400 hover:text-red-500 transition"><X size={24} /></button>
             )}
 
             <div className="text-center mb-8">
@@ -278,7 +285,7 @@ export const Chatbot = () => {
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 mb-2 block">
                     {isEWallet(selectedMethod) ? "Input Nomor HP E-Wallet" : "Input Nomor Rekening Anda"}
                   </label>
-                  <input 
+                  <input
                     type="text"
                     value={paymentInput}
                     onChange={(e) => setPaymentInput(e.target.value)}
@@ -289,25 +296,25 @@ export const Chatbot = () => {
                 </div>
 
                 <div className="bg-gray-900 rounded-2xl p-5 text-white">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-xs text-gray-400 font-bold">Produk:</span>
-                      <span className="text-xs text-white font-bold text-right w-32 truncate">{pendingOrderData?.product}</span>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs text-gray-400 font-bold">Produk:</span>
+                    <span className="text-xs text-white font-bold text-right w-32 truncate">{pendingOrderData?.product}</span>
+                  </div>
+                  {pendingOrderData?.variant && (
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-xs text-gray-400 font-bold">Varian:</span>
+                      <span className="text-xs text-gray-300 font-bold text-right">{pendingOrderData.variant}</span>
                     </div>
-                    {pendingOrderData?.variant && (
-                      <div className="flex justify-between items-center mb-3">
-                        <span className="text-xs text-gray-400 font-bold">Varian:</span>
-                        <span className="text-xs text-gray-300 font-bold text-right">{pendingOrderData.variant}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between items-center border-t border-gray-700 pt-3">
-                      <span className="text-xs text-gray-400 font-bold">Total Tagihan:</span>
-                      <span className="font-black text-blue-400 text-lg">
-                        Rp {calculateTotalBill(pendingOrderData?.product || '', pendingOrderData?.variant || '', pendingOrderData?.qty || 1).toLocaleString()}
-                      </span>
-                    </div>
+                  )}
+                  <div className="flex justify-between items-center border-t border-gray-700 pt-3">
+                    <span className="text-xs text-gray-400 font-bold">Total Tagihan:</span>
+                    <span className="font-black text-blue-400 text-lg">
+                      Rp {calculateTotalBill(pendingOrderData?.product || '', pendingOrderData?.variant || '', pendingOrderData?.qty || 1).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
 
-                <button 
+                <button
                   onClick={confirmPayment}
                   disabled={!paymentInput}
                   className="w-full bg-blue-600 text-white font-black py-5 rounded-2xl hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-50 shadow-xl shadow-blue-200"
@@ -334,18 +341,26 @@ export const Chatbot = () => {
             <p className="text-[10px] text-green-600 font-black mt-1 uppercase tracking-widest">ONLINE</p>
           </div>
         </div>
-        <button onClick={() => toggleChat(false)} className="bg-gray-50 p-2.5 rounded-xl hover:bg-red-50 hover:text-red-600 transition-all"><X size={20} /></button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleReset}
+            className="bg-gray-50 p-2.5 rounded-xl hover:bg-red-50 hover:text-red-600 transition-all"
+            title="Hapus Riwayat"
+          >
+            <Trash2 size={20} />
+          </button>
+          <button onClick={() => toggleChat(false)} className="bg-gray-50 p-2.5 rounded-xl hover:bg-red-50 hover:text-red-600 transition-all"><X size={20} /></button>
+        </div>
       </div>
 
       {/* Messages Area */}
-     <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-white custom-scrollbar">
+      <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-white custom-scrollbar">
         {chatMessages.map((msg, idx) => (
           <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] p-5 rounded-[2rem] text-sm leading-relaxed ${
-              msg.role === 'user' 
-                ? 'bg-blue-600 text-white rounded-tr-none shadow-2xl shadow-blue-100 font-medium' 
+            <div className={`max-w-[85%] p-5 rounded-[2rem] text-sm leading-relaxed ${msg.role === 'user'
+                ? 'bg-blue-600 text-white rounded-tr-none shadow-2xl shadow-blue-100 font-medium'
                 : 'bg-gray-50 border border-gray-100 text-gray-800 rounded-tl-none prose prose-sm prose-blue'
-            }`}>
+              }`}>
               <ReactMarkdown
                 components={{
                   code: ({ node, className, children, ...props }) => {
@@ -379,7 +394,7 @@ export const Chatbot = () => {
             </div>
           </div>
         ))}
-        
+
         {isLoading && (
           <div className="flex gap-2 items-center px-5 py-3 bg-gray-50 w-max rounded-full">
             <div className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
@@ -387,14 +402,14 @@ export const Chatbot = () => {
             <div className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-bounce"></div>
           </div>
         )}
-        
+
         {/* Payment Selection UI - INI YANG MEMUNCULKAN FORM PEMBAYARAN */}
         {pendingOrderData && !showPaymentModal && (
           <div className="bg-white p-6 rounded-[2.5rem] shadow-2xl border-2 border-blue-600 mt-2 animate-in zoom-in-95">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="bg-blue-100 p-2 rounded-xl text-blue-600"><CreditCard size={18} /></div>
-                <h4 className="font-black text-gray-900 uppercase text-xs tracking-widest">Pilih Metode Pembayaran</h4>
-              </div>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-blue-100 p-2 rounded-xl text-blue-600"><CreditCard size={18} /></div>
+              <h4 className="font-black text-gray-900 uppercase text-xs tracking-widest">Pilih Metode Pembayaran</h4>
+            </div>
             <div className="space-y-3 mb-6 bg-gray-50 p-4 rounded-2xl">
               <div className="flex justify-between text-[10px] font-bold">
                 <span className="text-gray-400 uppercase">Produk</span>
@@ -444,26 +459,26 @@ export const Chatbot = () => {
       {/* Input Area */}
       <div className="p-6 bg-white border-t border-gray-50 shrink-0">
         <div className="flex items-center gap-3 bg-gray-50 rounded-[1.5rem] p-2 focus-within:ring-2 focus-within:ring-blue-600/10 focus-within:bg-white border-2 border-transparent focus-within:border-blue-600/20 transition-all">
-          <input 
-            type="text" 
-            value={input} 
-            onChange={(e) => setInput(e.target.value)} 
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Tulis pesan..." 
+            placeholder="Tulis pesan..."
             className="flex-1 bg-transparent border-none px-4 py-3 text-sm outline-none font-bold placeholder:text-gray-400"
           />
-          <button 
-            onClick={handleSend} 
-            disabled={isLoading || !input.trim()} 
+          <button
+            onClick={handleSend}
+            disabled={isLoading || !input.trim()}
             className="bg-blue-600 text-white p-3.5 rounded-2xl hover:bg-gray-900 transition-all shadow-xl shadow-blue-100 disabled:bg-gray-200"
           >
             <Send size={20} />
           </button>
         </div>
         <div className="flex items-center justify-center gap-2 mt-4 opacity-30">
-            <div className="h-[1px] w-8 bg-gray-400"></div>
-            <p className="text-[8px] font-black uppercase tracking-[0.3em] text-gray-500">Trinity AI Engine 2.0</p>
-            <div className="h-[1px] w-8 bg-gray-400"></div>
+          <div className="h-[1px] w-8 bg-gray-400"></div>
+          <p className="text-[8px] font-black uppercase tracking-[0.3em] text-gray-500">Trinity AI Engine 2.0</p>
+          <div className="h-[1px] w-8 bg-gray-400"></div>
         </div>
       </div>
     </div>
