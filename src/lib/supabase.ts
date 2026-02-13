@@ -9,3 +9,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export const isSupabaseConfigured = () => {
     return supabaseUrl !== '' && supabaseAnonKey !== '';
 };
+
+export const getImageUrl = (path: string) => {
+  const { data } = supabase.storage
+    .from('image')
+    .getPublicUrl(path);
+
+  return data.publicUrl;
+};

@@ -17,6 +17,7 @@ import {
   Sliders as SlidersIcon
 } from 'lucide-react';
 import type { Product, ProductVariant, VariantOption } from '../types';
+import { getImageUrl, supabase } from '../lib/supabase';
 
 // Interface lokal untuk form agar sinkron dengan state
 interface FormVariant {
@@ -24,11 +25,49 @@ interface FormVariant {
   options: VariantOption[];
 }
 
+const MAX_SIZE = 200 * 1024; // 200KB
+
+const validateImage = (file: File): Promise<{ valid: boolean; message?: string }> => {
+  return new Promise((resolve) => {
+    if (file.size > MAX_SIZE) {
+      resolve({ valid: false, message: 'Ukuran gambar maksimal 200KB' });
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      const ratio = img.width / img.height;
+      const isSquare = Math.abs(ratio - 1) < 0.01;
+      const is169 = Math.abs(ratio - (16 / 9)) < 0.01;
+
+      if (!isSquare && !is169) {
+        resolve({ valid: false, message: 'Rasio gambar hanya boleh 1:1 atau 16:9' });
+      } else {
+        resolve({ valid: true });
+      }
+    };
+
+    img.src = URL.createObjectURL(file);
+  });
+};
+
+const CATEGORY_OPTIONS = [
+  'Aksesoris',
+  'Pakaian',
+  'Elektronik',
+  'Alat',
+  'Konsumsi',
+  'Furnitur'
+];
+
+
 export const ProductsPage = () => {
   const { products, addProduct, updateProduct, deleteProduct } = useStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+
   
   // PAGINATION STATE
   const [currentPage, setCurrentPage] = useState(1);
@@ -43,7 +82,7 @@ export const ProductsPage = () => {
     price: 0,
     stocks: 0,
     description: '',
-    image_url: '',
+    image: '',
     variants: []
   });
 
@@ -99,7 +138,7 @@ export const ProductsPage = () => {
         price: 0,
         stocks: 0,
         description: '',
-        image_url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500',
+        image: '',
         variants: []
       });
     }
@@ -146,9 +185,32 @@ export const ProductsPage = () => {
     setFormData({ ...formData, variants: newVariants });
   };
 
-  const updateOptionImage = (variantIndex: number, optionIndex: number, imageUrl: string) => {
+  const updateOptionImage = async (
+    variantIndex: number,
+    optionIndex: number,
+    file: File
+  ) => {
+    const { valid, message } = await validateImage(file);
+    if (!valid) {
+      alert(message);
+      return;
+    }
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `variant-${crypto.randomUUID()}.${fileExt}`;
+
+    const { error } = await supabase.storage
+      .from('image')
+      .upload(fileName, file);
+
+    if (error) {
+      alert('Upload gambar varian gagal');
+      return;
+    }
+
     const newVariants = [...(formData.variants || [])];
-    newVariants[variantIndex].options[optionIndex].image = imageUrl || undefined;
+    newVariants[variantIndex].options[optionIndex].image = fileName;
+
     setFormData({ ...formData, variants: newVariants });
   };
 
@@ -182,7 +244,7 @@ export const ProductsPage = () => {
 
     const finalData = {
       ...formData,
-      id: editingProduct ? editingProduct.id : Date.now().toString(),
+      id: editingProduct ? editingProduct.id : crypto.randomUUID(),
       price: Number(formData.price),
       stocks: Number(formData.stocks),
       variants: cleanedVariants.length > 0 ? cleanedVariants : undefined,
@@ -239,7 +301,12 @@ export const ProductsPage = () => {
           paginatedProducts.map(product => (
             <div key={product.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex gap-4">
               <div className="w-20 h-20 bg-gray-100 rounded-xl shrink-0 overflow-hidden border border-gray-100">
-                <img src={product.image_url} alt="" className="w-full h-full object-cover"/>
+                <img 
+                  src={product.image 
+                    ? getImageUrl(product.image) 
+                    : '/placeholder.png'
+                  }
+                />
               </div>
               <div className="flex-1 min-w-0 flex flex-col justify-between">
                 <div>
@@ -293,7 +360,15 @@ export const ProductsPage = () => {
                   <tr key={product.id} className="hover:bg-blue-50/30 transition-colors group">
                     <td className="p-6">
                       <div className="flex items-center gap-4">
-                        <img src={product.image_url} className="w-12 h-12 rounded-2xl object-cover bg-gray-100 shadow-sm" alt="" />
+                        <img 
+                          src={
+                            product.image
+                              ? getImageUrl(product.image)
+                              : '/placeholder.png'
+                          }
+                          className="w-12 h-12 rounded-2xl object-cover bg-gray-100 shadow-sm"
+                          alt=""
+                        />
                         <div>
                           <p className="font-bold text-gray-900">{product.product_name}</p>
                           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">{product.product_sku}</p>
@@ -312,7 +387,16 @@ export const ProductsPage = () => {
                               <div className="flex flex-wrap gap-1">
                                 {v.options.map((opt, optIdx) => (
                                   <span key={optIdx} className="text-[10px] bg-white border border-gray-200 text-gray-600 px-2 py-0.5 rounded-md shadow-sm">
-                                    {opt.name} 
+                                    <div className="flex items-center gap-1">
+                                    {opt.image && (
+                                      <img
+                                        src={getImageUrl(opt.image)}
+                                        className="w-4 h-4 rounded object-cover"
+                                        alt=""
+                                      />
+                                    )}
+                                    {opt.name}
+                                  </div> 
                                     <span className={`font-black ml-1 ${ (opt.stock || 0) <= 0 ? 'text-red-500' : 'text-blue-600' }`}>({opt.stock || 0})</span>
                                     {/* Jika option_price ada dan bukan 0, tampilkan harga khusus */}
                                     {opt.option_price && opt.option_price > 0 && (
@@ -428,18 +512,65 @@ export const ProductsPage = () => {
                 </div>
 
                 {/* KATEGORI */}
+                <div className="space-y-2 relative">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                  <LayersIcon size={14}/> Kategori
+                </label>
+
+                <div className="relative">
+                  {/* Trigger */}
+                  <button
+                    type="button"
+                    onClick={() => setIsCategoryOpen(prev => !prev)}
+                    className="w-full bg-gray-50 rounded-2xl px-5 py-3 text-sm font-medium text-left flex justify-between items-center hover:bg-gray-100 transition focus:ring-2 focus:ring-blue-500 outline-none"
+                  >
+                    <span className={formData.category ? 'text-gray-900' : 'text-gray-400'}>
+                      {formData.category || 'Pilih kategori'}
+                    </span>
+                    <span className={`transition-transform ${isCategoryOpen ? 'rotate-180' : ''}`}>
+                      ▼
+                    </span>
+                  </button>
+
+                  {/* Dropdown Panel */}
+                  {isCategoryOpen && (
+                    <div className="absolute z-50 mt-2 w-full bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                      {CATEGORY_OPTIONS.map((cat) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => {
+                            setFormData({ ...formData, category: cat });
+                            setIsCategoryOpen(false);
+                          }}
+                          className={`w-full text-left px-5 py-3 text-sm font-medium transition
+                            ${formData.category === cat 
+                              ? 'bg-blue-50 text-blue-600 font-bold' 
+                              : 'hover:bg-gray-50 text-gray-700'}
+                          `}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+                {/* BRAND */}
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                    <LayersIcon size={14}/> Kategori
+                    <TagIcon size={14}/> Brand
                   </label>
                   <input 
-                    required 
-                    value={formData.category || ''} 
-                    onChange={e => setFormData({...formData, category: e.target.value})} 
+                    required
+                    value={formData.brand || ''} 
+                    onChange={e => setFormData({...formData, brand: e.target.value})} 
                     className="w-full bg-gray-50 border-none rounded-2xl px-5 py-3 focus:ring-2 focus:ring-blue-500 transition outline-none text-sm font-medium" 
-                    placeholder="Elektronik, Kopi, dll" 
+                    placeholder="Contoh: Nike, Apple, Bissolf"
                   />
                 </div>
+
 
                 {/* HARGA DASAR */}
                 <div className="space-y-2">
@@ -469,16 +600,85 @@ export const ProductsPage = () => {
                   />
                 </div>
 
-                {/* IMAGE URL */}
+                {/* PRODUCT IMAGE */}
+                <div className="md:col-span-2 space-y-4">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                    <ImageIconAlt size={14}/> Gambar Produk
+                  </label>
+
+                  {formData.image && (
+                    <div className="w-40 h-40 rounded-2xl overflow-hidden border border-gray-200">
+                      <img
+                        src={getImageUrl(formData.image)}
+                        className="w-full h-full object-cover"
+                        alt="Preview"
+                      />
+                    </div>
+                  )}
+
+                  {/* Hidden input */}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    id="product-image-upload"
+                    className="hidden"
+                    onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+
+                        const { valid, message } = await validateImage(file);
+                        if (!valid) {
+                          alert(message);
+                          return;
+                        }
+
+                        const fileName = `${Date.now()}-${file.name}`;
+
+                        const { error } = await supabase.storage
+                          .from('image')
+                          .upload(fileName, file);
+
+                        if (error) {
+                          alert('Upload gagal');
+                          return;
+                        }
+
+                        setFormData({ ...formData, image: fileName });
+                      }}
+                  />
+
+                  {/* Custom uploader */}
+                  <label
+                    htmlFor="product-image-upload"
+                    className="group cursor-pointer border-2 border-dashed border-gray-200 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 hover:border-blue-500 hover:bg-blue-50 transition"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition">
+                      <ImageIconAlt size={22} className="text-blue-600" />
+                    </div>
+
+                    <div className="text-center space-y-1">
+                      <p className="text-sm font-semibold text-gray-700">
+                        Klik untuk upload gambar
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        PNG / JPG • 1:1 atau 16:9 • Maks 200KB
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
+                {/* DESCRIPTION */}
                 <div className="md:col-span-2 space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                    <ImageIconAlt size={14}/> Image URL (Produk Utama)
+                    <LayersIcon size={14}/> Deskripsi Produk
                   </label>
-                  <input 
-                    value={formData.image_url || ''} 
-                    onChange={e => setFormData({...formData, image_url: e.target.value})} 
-                    className="w-full bg-gray-50 border-none rounded-2xl px-5 py-3 focus:ring-2 focus:ring-blue-500 transition outline-none text-sm font-medium" 
-                    placeholder="https://images.unsplash.com/..."
+                  <textarea 
+                    required
+                    rows={4}
+                    value={formData.description || ''} 
+                    onChange={e => setFormData({...formData, description: e.target.value})} 
+                    className="w-full bg-gray-50 border-none rounded-2xl px-5 py-3 focus:ring-2 focus:ring-blue-500 transition outline-none text-sm font-medium resize-none"
+                    placeholder="Tuliskan deskripsi lengkap produk di sini..."
                   />
                 </div>
 
@@ -535,9 +735,9 @@ export const ProductsPage = () => {
                         {variant.options.length > 0 && (
                             <div className="hidden sm:flex gap-2 text-[10px] text-gray-400 font-bold uppercase tracking-wider px-2">
                               <span className="flex-1">Nama Opsi</span>
-                              <span className="w-24">Harga (Rp)</span>
+                              <span className="w-25">Harga Tambah Variant</span>
                               <span className="w-16">Stok</span>
-                              <span className="w-32">URL Gambar</span>
+                              <span className="w-32">Gambar</span>
                               <span className="w-8"></span>
                             </div>
                         )}
@@ -577,14 +777,26 @@ export const ProductsPage = () => {
                                   />
                                 </div>
 
-                                {/* Input URL Gambar */}
+                                {/* Input Gambar Variant */}
                                 <input 
-                                  placeholder="URL Gambar" 
-                                  value={option.image || ''}
-                                  onChange={(e) => updateOptionImage(vIndex, oIndex, e.target.value)}
-                                  className="flex-1 sm:w-32 px-3 py-2 text-[10px] bg-gray-50 border border-gray-100 rounded-lg focus:ring-1 focus:ring-blue-400 outline-none"
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    updateOptionImage(vIndex, oIndex, file);
+                                  }}
+                                  className="flex-1 sm:w-32 px-3 py-2 text-[10px] bg-gray-50 border border-gray-100 rounded-lg"
                                 />
-
+                                {option.image && (
+                                  <div className="w-14 h-14 rounded-lg overflow-hidden border border-gray-200">
+                                    <img
+                                      src={getImageUrl(option.image)}
+                                      className="w-full h-full object-cover"
+                                      alt=""
+                                    />
+                                  </div>
+                                )}
                                 <button 
                                   type="button"
                                   onClick={() => removeOptionFromVariant(vIndex, oIndex)}

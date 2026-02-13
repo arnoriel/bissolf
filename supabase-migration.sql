@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS products (
   brand TEXT NOT NULL DEFAULT '',
   category TEXT NOT NULL DEFAULT '',
   description TEXT NOT NULL DEFAULT '',
-  image_url TEXT,
+  image TEXT,
   variants JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -52,7 +52,7 @@ CREATE POLICY "Allow all for anon - orders" ON orders
 -- SEED DATA: 16 Produk BISSOLF
 -- ============================================
 
-INSERT INTO products (id, product_name, product_sku, price, stocks, brand, category, description, image_url, variants) VALUES
+INSERT INTO products (id, product_name, product_sku, price, stocks, brand, category, description, image, variants) VALUES
 ('1', 'Kopi Arabika Gayo', 'KOP-001', 75000, 45, 'Bissolf', 'Coffee', 'Kopi premium dari dataran tinggi Gayo, aroma floral dan rasa fruity.', 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=300',
   '[{"name":"Gilingan","options":[{"name":"Biji Utuh","image":"https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=80","stock":15,"option_price":0},{"name":"Bubuk Halus","image":"https://images.unsplash.com/photo-1646346835113-b83a4097983b?w=80","stock":20,"option_price":0},{"name":"Bubuk Kasar","image":"https://images.unsplash.com/photo-1517254456976-ee8682099819?w=80","stock":10,"option_price":0}]},{"name":"Roasting","options":[{"name":"Medium","image":"https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=80","stock":25,"option_price":0},{"name":"Dark","image":"https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=80","stock":20,"option_price":5000}]}]'::jsonb),
 

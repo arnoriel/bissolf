@@ -5,6 +5,8 @@ import {
   Sparkles, TrendingUp
 } from 'lucide-react';
 import type { Product, Order } from '../types';
+import { getImageUrl } from '../lib/supabase';
+
 
 interface CatalogProps {
   products: Product[];
@@ -252,7 +254,11 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
               {/* Image Section - langsung dari atas, no padding atas */}
               <div className="relative h-[40vh] sm:h-[50vh] lg:h-full overflow-hidden group order-1 lg:order-1">
                 <img 
-                  src={selectedProduct.image_url} 
+                  src={
+                    selectedProduct.image
+                      ? getImageUrl(selectedProduct.image)
+                      : '/placeholder.png'
+                  }
                   className="w-full h-full object-cover" 
                   alt={selectedProduct.product_name} 
                 />
@@ -331,7 +337,11 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
                                 {hasImage && (
                                   <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-lg md:rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
                                     <img 
-                                      src={option.image}
+                                      src={
+                                        option.image
+                                          ? getImageUrl(option.image)
+                                          : undefined
+                                      }
                                       alt={optionName}
                                       className="w-full h-full object-cover"
                                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -392,7 +402,11 @@ const ProductCard = ({ product, onClick, isTopPick }: { product: Product, onClic
   >
     <div className="relative overflow-hidden rounded-[1.2rem] md:rounded-[2.8rem] h-[180px] md:h-[340px] mb-4 md:mb-8">
       <img 
-        src={product.image_url} 
+        src={
+          product.image
+            ? getImageUrl(product.image)
+            : '/placeholder.png'
+        }
         alt={product.product_name} 
         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[1.5s] ease-out" 
       />
