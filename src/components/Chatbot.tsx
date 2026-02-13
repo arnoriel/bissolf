@@ -1,7 +1,7 @@
 // F:\projectan\bissolf\src\components\Chatbot.tsx
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Send, Loader2, Wallet, CreditCard, Bot, Copy, Check, Trash2 } from 'lucide-react';
+import { X, Send, Loader2, Wallet, CreditCard, Bot, Copy, Check } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { getAIResponse } from '../lib/ai';
 import type { Order } from '../types';
@@ -16,8 +16,7 @@ export const Chatbot = () => {
     createOrder,
     products,
     orders,
-    cancelOrder,
-    resetChat
+    cancelOrder
   } = useStore();
 
   const [input, setInput] = useState('');
@@ -36,12 +35,6 @@ export const Chatbot = () => {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const handleReset = () => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus semua riwayat chat?')) {
-      resetChat();
-    }
   };
 
   useEffect(() => {
@@ -199,59 +192,68 @@ export const Chatbot = () => {
   };
 
   const confirmPayment = async () => {
-    if (!pendingOrderData || !paymentInput) return;
+  if (!pendingOrderData || !paymentInput) return;
 
-    setIsProcessingPayment(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
+  setIsProcessingPayment(true);
+  await new Promise(resolve => setTimeout(resolve, 1500));
 
-    const product = products.find(p =>
-      p.product_name.toLowerCase().includes(pendingOrderData.product.toLowerCase())
-    ) || products[0];
+  const product = products.find(p =>
+    p.product_name.toLowerCase().includes(pendingOrderData.product.toLowerCase())
+  ) || products[0];
 
-    let additionalPrice = 0;
-    if (pendingOrderData.variant && product.variants) {
-      product.variants.forEach(v => {
-        v.options.forEach(opt => {
-          if (pendingOrderData.variant.includes(opt.name)) {
-            additionalPrice += (opt.option_price || 0);
-          }
-        });
+  // Kalkulasi harga final
+  let additionalPrice = 0;
+  if (pendingOrderData.variant && product.variants) {
+    product.variants.forEach(v => {
+      v.options.forEach(opt => {
+        if (pendingOrderData.variant.includes(opt.name)) {
+          additionalPrice += (opt.option_price || 0);
+        }
       });
-    }
+    });
+  }
 
-    const finalUnitPrice = product.price + additionalPrice;
-    const finalTotalPrice = finalUnitPrice * pendingOrderData.qty;
+  const finalUnitPrice = product.price + additionalPrice;
+  const finalTotalPrice = finalUnitPrice * pendingOrderData.qty;
+  const orderId = `ORD-${Date.now().toString().slice(-6)}`;
 
-    const orderId = `ORD-${Date.now().toString().slice(-6)}`;
+  // PASTIKAN PROPERTI INI SAMA DENGAN KOLOM SUPABASE
+  const newOrder: Order = {
+    id: orderId,
+    id_product: product.id,
+    product_name: product.product_name,
+    product_price: finalUnitPrice,
+    quantity: pendingOrderData.qty,
+    total_price: finalTotalPrice,
+    buyer_name: pendingOrderData.name,
+    buyer_phone: pendingOrderData.phone,
+    buyer_location: pendingOrderData.location || "Alamat tidak terdeteksi",
+    selected_variants: pendingOrderData.variant || "-",
+    payment_method: selectedMethod,
+    status: 'Packaging',
+    created_at: new Date().toISOString(),
+    variant: ''
+  };
 
-    const newOrder: Order = {
-      id: orderId,
-      id_product: product.id,
-      product_name: product.product_name,
-      product_price: finalUnitPrice,
-      quantity: pendingOrderData.qty,
-      total_price: finalTotalPrice,
-      buyer_name: pendingOrderData.name,
-      buyer_phone: pendingOrderData.phone,
-      buyer_location: pendingOrderData.location || "Alamat tidak terdeteksi",
-      selected_variants: pendingOrderData.variant || "-",
-      payment_method: selectedMethod,
-      status: 'Packaging',
-      created_at: new Date().toISOString(),
-      variant: ''
-    };
-
-    createOrder(newOrder);
-
-    setIsProcessingPayment(false);
-    setShowPaymentModal(false);
-    setPendingOrderData(null);
+  try {
+    await createOrder(newOrder);
 
     addChatMessage({
       role: 'assistant',
-      content: `### ✅ Pembayaran Berhasil!\n\nPembayaran via **${selectedMethod}** telah diverifikasi.\n\n**Detail Pesanan:**\n- **Produk:** ${product.product_name}\n- **Varian:** ${newOrder.selected_variants}\n- **Total:** Rp${finalTotalPrice.toLocaleString('id-ID')}\n- **Order ID:** \`${orderId}\` \n\nTerima kasih! Pesananmu sedang kami siapkan untuk pengiriman.`
+      content: `### ✅ Pembayaran Berhasil!\n\nPembayaran via **${selectedMethod}** telah diverifikasi.\n\n**Detail Pesanan:**\n- **Order ID:** \`${orderId}\` \n- **Produk:** ${product.product_name}\n- **Total:** Rp${finalTotalPrice.toLocaleString('id-ID')}\n\nTerima kasih! Pesananmu sedang kami siapkan.`
     });
-  };
+  } catch (err) {
+    console.error("Error saving order:", err);
+    addChatMessage({
+      role: 'assistant',
+      content: "❌ Maaf, pesanan gagal disimpan ke database. Silakan hubungi admin."
+    });
+  } finally {
+    setIsProcessingPayment(false);
+    setShowPaymentModal(false);
+    setPendingOrderData(null);
+  }
+};
 
   if (!isChatOpen) return null;
 
@@ -342,13 +344,6 @@ export const Chatbot = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleReset}
-            className="bg-gray-50 p-2.5 rounded-xl hover:bg-red-50 hover:text-red-600 transition-all"
-            title="Hapus Riwayat"
-          >
-            <Trash2 size={20} />
-          </button>
           <button onClick={() => toggleChat(false)} className="bg-gray-50 p-2.5 rounded-xl hover:bg-red-50 hover:text-red-600 transition-all"><X size={20} /></button>
         </div>
       </div>

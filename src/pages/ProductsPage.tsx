@@ -182,7 +182,7 @@ export const ProductsPage = () => {
 
     const finalData = {
       ...formData,
-      id: editingProduct ? editingProduct.id : Date.now().toString(),
+      id: editingProduct ? editingProduct.id : crypto.randomUUID(),
       price: Number(formData.price),
       stocks: Number(formData.stocks),
       variants: cleanedVariants.length > 0 ? cleanedVariants : undefined,

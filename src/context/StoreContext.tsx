@@ -13,9 +13,9 @@ interface StoreContextType {
   createOrder: (order: Order) => void;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
   cancelOrder: (orderId: string, reason: string) => { success: boolean; message: string };
-  addProduct: (product: Product) => void;
-  updateProduct: (product: Product) => void;
-  deleteProduct: (id: string) => void;
+  addProduct: (product: Product) => Promise<void>;
+  updateProduct: (product: Product) => Promise<void>;
+  deleteProduct: (id: string) => Promise<void>;
   updateProductStock: (id: string, qty: number, variantOptionName?: string) => void;
   initiateOrderFromLanding: (product: Product, variantLabel?: string) => void;
   resetChat: () => void;
@@ -33,15 +33,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const useSupabase = isSupabaseConfigured();
 
-  // ─── LOAD DATA SAAT MOUNT ───
   const loadData = useCallback(async () => {
     setIsLoading(true);
-
     if (useSupabase) {
-      // === SUPABASE MODE ===
       try {
         const [productsRes, ordersRes] = await Promise.all([
-          supabase.from('products').select('*').order('created_at', { ascending: true }),
+          supabase.from('products').select('*').order('created_at', { ascending: false }),
           supabase.from('orders').select('*').order('created_at', { ascending: false })
         ]);
 
@@ -51,15 +48,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setProducts(productsRes.data || []);
         setOrders(ordersRes.data || []);
       } catch (error) {
-        console.error('Supabase load error, fallback ke localStorage:', error);
-        // Fallback ke localStorage jika Supabase gagal
+        console.error('Supabase load error:', error);
         loadFromLocalStorage();
       }
     } else {
-      // === LOCAL MODE ===
       loadFromLocalStorage();
     }
-
     setIsLoading(false);
   }, [useSupabase]);
 
@@ -74,37 +68,30 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     loadData();
   }, [loadData]);
 
-  // ─── SYNC LOCAL STORAGE (fallback) ───
+  // Sync LocalStorage hanya jika tidak pakai Supabase
   useEffect(() => {
-    if (!useSupabase && products.length > 0) {
+    if (!useSupabase && !isLoading) {
       localStorage.setItem('bissolf_products', JSON.stringify(products));
-    }
-  }, [products, useSupabase]);
-
-  useEffect(() => {
-    if (!useSupabase) {
       localStorage.setItem('bissolf_orders', JSON.stringify(orders));
     }
-  }, [orders, useSupabase]);
+  }, [products, orders, useSupabase, isLoading]);
 
-  // ─── CHAT ───
   const toggleChat = (state?: boolean) => setIsChatOpen(prev => state ?? !prev);
-
-  const addChatMessage = (msg: ChatMessage) => {
-    setChatMessages(prev => [...prev, msg]);
-  };
-
-  const resetChat = () => {
-    setChatMessages([]);
-  };
+  const addChatMessage = (msg: ChatMessage) => setChatMessages(prev => [...prev, msg]);
+  const resetChat = () => setChatMessages([]);
 
   // ─── PRODUCT CRUD ───
   const addProduct = async (product: Product) => {
+    // Update UI dulu (Optimistic Update)
     setProducts(prev => [product, ...prev]);
 
     if (useSupabase) {
-      const { error } = await supabase.from('products').insert(product);
-      if (error) console.error('Supabase insert product error:', error);
+      const { error } = await supabase.from('products').insert([product]);
+      if (error) {
+        console.error('Supabase Insert Error:', error.message, error.details);
+        alert("Gagal menyimpan ke database: " + error.message);
+        loadData(); // Revert jika gagal
+      }
     }
   };
 
@@ -116,7 +103,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .from('products')
         .update(updated)
         .eq('id', updated.id);
-      if (error) console.error('Supabase update product error:', error);
+      
+      if (error) {
+        console.error('Supabase Update Error:', error.message);
+        alert("Gagal update database: " + error.message);
+        loadData();
+      }
     }
   };
 
@@ -128,7 +120,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .from('products')
         .delete()
         .eq('id', id);
-      if (error) console.error('Supabase delete product error:', error);
+
+      if (error) {
+        console.error('Supabase Delete Error:', error.message);
+        alert("Gagal menghapus dari database.");
+        loadData();
+      }
     }
   };
 
@@ -166,18 +163,25 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           variants: (updatedProduct as Product).variants
         })
         .eq('id', id);
-      if (error) console.error('Supabase update stock error:', error);
+      if (error) console.error('Supabase stock update error:', error);
     }
   };
 
   // ─── ORDER CRUD ───
   const createOrder = async (order: Order) => {
+    // 1. Update UI secara lokal (Optimistic)
     setOrders(prev => [order, ...prev]);
-    updateProductStock(order.id_product, order.quantity, order.selected_variants);
+    
+    // 2. Update Stok (Pastikan ini juga async jika ke database)
+    await updateProductStock(order.id_product, order.quantity, order.selected_variants);
 
+    // 3. Simpan ke Supabase
     if (useSupabase) {
-      const { error } = await supabase.from('orders').insert(order);
-      if (error) console.error('Supabase insert order error:', error);
+      const { error } = await supabase.from('orders').insert([order]);
+      if (error) {
+        console.error('Gagal simpan ke Supabase:', error.message);
+        throw error; // Lempar error supaya bisa ditangkap di Chatbot.tsx
+      }
     }
   };
 
@@ -189,7 +193,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .from('orders')
         .update({ status })
         .eq('id', orderId);
-      if (error) console.error('Supabase update order status error:', error);
+      if (error) console.error('Supabase order status error:', error);
     }
   };
 
@@ -205,14 +209,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       o.id === orderId ? { ...o, status: 'Canceled' as OrderStatus, cancel_reason: reason } : o
     ));
 
-    // Supabase update
     if (useSupabase) {
       supabase
         .from('orders')
         .update({ status: 'Canceled', cancel_reason: reason })
         .eq('id', orderId)
         .then(({ error }) => {
-          if (error) console.error('Supabase cancel order error:', error);
+          if (error) console.error('Supabase cancel error:', error);
         });
     }
 
@@ -220,12 +223,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return { success: true, message: "Pesanan dibatalkan, stok dikembalikan." };
   };
 
-  // ─── INITIATE ORDER FROM LANDING ───
   const initiateOrderFromLanding = (product: Product, variantLabel?: string) => {
     setIsChatOpen(true);
-
     let additionalPrice = 0;
-
     if (variantLabel && product.variants) {
       product.variants.forEach(v => {
         v.options.forEach(opt => {
@@ -235,13 +235,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         });
       });
     }
-
     const totalPrice = product.price + additionalPrice;
-
     const content = variantLabel
       ? `Halo BISSOLF! Saya tertarik untuk memesan ${product.product_name} (${variantLabel}). Harga total: Rp${totalPrice.toLocaleString('id-ID')}`
       : `Halo BISSOLF! Saya tertarik untuk memesan ${product.product_name}.`;
-
     addChatMessage({ role: 'user', content: content });
   };
 
