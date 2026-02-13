@@ -12,7 +12,7 @@ export const dummyProducts: Product[] = [
   //   brand: 'Bissolf', 
   //   category: 'Coffee', 
   //   description: 'Kopi premium dari dataran tinggi Gayo, aroma floral dan rasa fruity.', 
-  //   image_url: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=300',
+  //   image: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=300',
   //   variants: [
   //     { 
   //       name: 'Gilingan', 
@@ -40,7 +40,7 @@ export const dummyProducts: Product[] = [
   //   brand: 'Bissolf', 
   //   category: 'Apparel', 
   //   description: 'Kaos polos cotton combed 30s, nyaman dipakai sehari-hari.', 
-  //   image_url: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300',
+  //   image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300',
   //   variants: [
   //     { 
   //       name: 'Size', 
@@ -62,7 +62,7 @@ export const dummyProducts: Product[] = [
   //   brand: 'Sony', 
   //   category: 'Electronics', 
   //   description: 'Speaker portable dengan bass mantap dan tahan air IPX7.', 
-  //   image_url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300',
+  //   image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300',
   //   variants: [
   //     { 
   //       name: 'Warna', 
@@ -83,7 +83,7 @@ export const dummyProducts: Product[] = [
   //   brand: 'Bissolf', 
   //   category: 'Accessories', 
   //   description: 'Tumbler stainless steel 500ml, tahan panas & dingin hingga 12 jam.', 
-  //   image_url: 'https://images.unsplash.com/photo-1517254456976-ee8682099819?w=300',
+  //   image: 'https://images.unsplash.com/photo-1517254456976-ee8682099819?w=300',
   //   variants: [
   //     { 
   //       name: 'Warna', 
@@ -104,7 +104,7 @@ export const dummyProducts: Product[] = [
   //   brand: 'Bissolf', 
   //   category: 'Coffee', 
   //   description: 'Robusta Lampung dengan body tebal dan aftertaste coklat.', 
-  //   image_url: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=300',
+  //   image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=300',
   //   variants: [
   //     { 
   //       name: 'Gilingan', 
@@ -124,7 +124,7 @@ export const dummyProducts: Product[] = [
   //   brand: 'Bissolf', 
   //   category: 'Apparel', 
   //   description: 'Hoodie oversize cotton fleece, sangat nyaman dan hangat.', 
-  //   image_url: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=300',
+  //   image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=300',
   //   variants: [
   //     { 
   //       name: 'Size', 
@@ -153,7 +153,7 @@ export const dummyProducts: Product[] = [
   //   brand: 'Keychron', 
   //   category: 'Electronics', 
   //   description: 'Keyboard mechanical RGB hot-swappable, layout TKL.', 
-  //   image_url: 'https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=300',
+  //   image: 'https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=300',
   //   variants: [
   //     { 
   //       name: 'Switch', 
@@ -174,7 +174,7 @@ export const dummyProducts: Product[] = [
   //   brand: 'Bissolf', 
   //   category: 'Accessories', 
   //   description: 'Dompet kulit asli slim dengan 8 slot kartu.', 
-  //   image_url: 'https://wia.id/media/catalog/product/cache/wia_id_slimfold_mini_slim-leather_wallet-4_copy80080025.webp'
+  //   image: 'https://wia.id/media/catalog/product/cache/wia_id_slimfold_mini_slim-leather_wallet-4_copy80080025.webp'
   // },
   // { 
   //   id: '10', 
@@ -185,7 +185,7 @@ export const dummyProducts: Product[] = [
   //   brand: 'Bissolf', 
   //   category: 'Accessories', 
   //   description: 'Totebag kanvas tebal 12 oz, ramah lingkungan.', 
-  //   image_url: 'https://images.unsplash.com/photo-1544816155-12df9643f363?w=300',
+  //   image: 'https://images.unsplash.com/photo-1544816155-12df9643f363?w=300',
   //   variants: [
   //     { 
   //       name: 'Motif', 
@@ -206,7 +206,7 @@ export const dummyProducts: Product[] = [
   //   brand: 'Bissolf', 
   //   category: 'Apparel', 
   //   description: 'Celana jeans slim fit stretch denim premium.', 
-  //   image_url: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=300',
+  //   image: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=300',
   //   variants: [
   //     { 
   //       name: 'Size', 
@@ -236,7 +236,7 @@ export const dummyProducts: Product[] = [
   //   brand: 'Bissolf', 
   //   category: 'Coffee', 
   //   description: 'Cold brew siap minum dalam botol kaca 250ml.', 
-  //   image_url: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=300',
+  //   image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=300',
   //   variants: [
   //     { 
   //       name: 'Rasa', 
@@ -257,7 +257,7 @@ export const dummyProducts: Product[] = [
   //   brand: 'Bissolf', 
   //   category: 'Apparel', 
   //   description: 'Sandal slide unisex dengan sol empuk EVA.', 
-  //   image_url: 'https://images.unsplash.com/photo-1603487742131-4160ec999306?w=300',
+  //   image: 'https://images.unsplash.com/photo-1603487742131-4160ec999306?w=300',
   //   variants: [
   //     { 
   //       name: 'Size', 
@@ -280,7 +280,7 @@ export const dummyProducts: Product[] = [
   //   brand: 'Bissolf', 
   //   category: 'Accessories', 
   //   description: 'Buku catatan A5 hardcover 100 lembar premium.', 
-  //   image_url: 'https://images.unsplash.com/photo-1531346878377-a5be20888e57?w=300',
+  //   image: 'https://images.unsplash.com/photo-1531346878377-a5be20888e57?w=300',
   //   variants: [
   //     { 
   //       name: 'Cover', 
@@ -309,7 +309,7 @@ export const dummyProducts: Product[] = [
   //   brand: 'Bissolf', 
   //   category: 'Apparel', 
   //   description: 'Kemeja flanel kotak-kotak bahan cotton brushed.', 
-  //   image_url: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=300',
+  //   image: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=300',
   //   variants: [
   //     { 
   //       name: 'Size', 
@@ -338,7 +338,7 @@ export const dummyProducts: Product[] = [
   //   brand: 'Bissolf', 
   //   category: 'Apparel', 
   //   description: 'Jaket bomber waterproof dengan lining hangat.', 
-  //   image_url: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=300',
+  //   image: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=300',
   //   variants: [
   //     { 
   //       name: 'Size', 

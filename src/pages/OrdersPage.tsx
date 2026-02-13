@@ -16,6 +16,7 @@ import {
   Calendar
 } from 'lucide-react';
 import type { OrderStatus, Order } from '../types';
+import { getImageUrl } from '../lib/supabase';
 
 export const OrdersPage = () => {
   const { orders, products, updateOrderStatus } = useStore();
@@ -82,9 +83,10 @@ export const OrdersPage = () => {
     a.click();
   };
 
-  const getProductImage = (productId: string) => {
+  const getProductImage = (productId: string): string | undefined => {
     const product = products.find(p => p.id === productId);
-    return product?.image_url;
+    if (!product?.image) return undefined;
+      return getImageUrl(product.image);
   };
 
   return (

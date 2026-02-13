@@ -19,7 +19,7 @@ export interface Product {
   brand: string;
   category: string;
   description: string;
-  image_url?: string;
+  image?: string;
   variants?: ProductVariant[]; 
 }
 
