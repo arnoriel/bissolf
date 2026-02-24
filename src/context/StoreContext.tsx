@@ -37,35 +37,34 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Load data hanya untuk user yang login
   const loadData = useCallback(async () => {
-    if (!isAuthenticated || !user) {
-      setProducts([]);
-      setOrders([]);
-      setIsLoading(false);
-      return;
-    }
-
     setIsLoading(true);
+
     if (useSupabase) {
       try {
-        // Load products untuk user ini saja
+        // ✅ LOAD ALL PRODUCTS (PUBLIC)
         const { data: productsData, error: productsError } = await supabase
           .from('products')
           .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-
-        // Load orders untuk produk user ini (sebagai seller)
-        const { data: ordersData, error: ordersError } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('seller_id', user.id)
           .order('created_at', { ascending: false });
 
         if (productsError) throw productsError;
-        if (ordersError) throw ordersError;
 
         setProducts(productsData || []);
-        setOrders(ordersData || []);
+
+        // ✅ LOAD ORDERS ONLY IF SELLER LOGIN
+        if (isAuthenticated && user) {
+          const { data: ordersData, error: ordersError } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('seller_id', user.id)
+            .order('created_at', { ascending: false });
+
+          if (ordersError) throw ordersError;
+          setOrders(ordersData || []);
+        } else {
+          setOrders([]);
+        }
+
       } catch (error) {
         console.error('Supabase load error:', error);
         loadFromLocalStorage();
@@ -73,6 +72,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } else {
       loadFromLocalStorage();
     }
+
     setIsLoading(false);
   }, [useSupabase, isAuthenticated, user]);
 
