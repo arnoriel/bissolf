@@ -41,15 +41,20 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     if (useSupabase) {
       try {
-        // ✅ LOAD ALL PRODUCTS (PUBLIC)
-        const { data: productsData, error: productsError } = await supabase
-          .from('products')
-          .select('*')
-          .order('created_at', { ascending: false });
+        // ✅ LOAD PRODUCTS ONLY FOR LOGGED-IN SELLER
+        if (isAuthenticated && user) {
+          const { data: productsData, error: productsError } = await supabase
+            .from('products')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
 
-        if (productsError) throw productsError;
+          if (productsError) throw productsError;
 
-        setProducts(productsData || []);
+          setProducts(productsData || []);
+        } else {
+          setProducts([]);
+        }
 
         // ✅ LOAD ORDERS ONLY IF SELLER LOGIN
         if (isAuthenticated && user) {
