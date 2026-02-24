@@ -1,10 +1,8 @@
-// F:\projectan\bissolf\src\components\Chatbot.tsx
-
 import { useState, useEffect, useRef } from 'react';
 import { X, Send, Loader2, Wallet, CreditCard, Bot, Copy, Check } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { getAIResponse } from '../lib/ai';
-import type { Order } from '../types';
+import type { Order, Product } from '../types'; // Tambahkan Product type
 import ReactMarkdown from 'react-markdown';
 
 export const Chatbot = () => {
@@ -14,14 +12,15 @@ export const Chatbot = () => {
     chatMessages,
     addChatMessage,
     createOrder,
-    products,
     orders,
-    cancelOrder
+    cancelOrder,
+    getAllProducts // Ambil fungsi baru dari context
   } = useStore();
 
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [pendingOrderData, setPendingOrderData] = useState<any>(null);
+  const [allProducts, setAllProducts] = useState<Product[]>([]); // State untuk menampung semua produk
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // --- Payment Modal States ---
@@ -41,6 +40,17 @@ export const Chatbot = () => {
     scrollToBottom();
   }, [chatMessages, pendingOrderData, isLoading]);
 
+  // --- FETCH SEMUA PRODUK SAAT CHAT DIBUKA ---
+  useEffect(() => {
+    const fetchProducts = async () => {
+      if (isChatOpen) {
+        const data = await getAllProducts();
+        setAllProducts(data);
+      }
+    };
+    fetchProducts();
+  }, [isChatOpen, getAllProducts]);
+
   // Handle Initial System Prompt & AI Logic
   useEffect(() => {
     if (isChatOpen && chatMessages.length > 0) {
@@ -59,8 +69,8 @@ export const Chatbot = () => {
   const processAIResponse = async () => {
     setIsLoading(true);
 
-    // Siapkan data konteks produk LENGKAP dengan variants dan stok detail
-    const productContext = products.map(p => ({
+    // Gunakan allProducts (bukan products dari context yang terbatas milik seller)
+    const productContext = allProducts.map(p => ({
       id: p.id,
       name: p.product_name,
       base_price: p.price,
@@ -174,7 +184,8 @@ export const Chatbot = () => {
   };
 
   const calculateTotalBill = (prodName: string, variantName: string, qty: number) => {
-    const product = products.find(p => p.product_name.toLowerCase().includes(prodName.toLowerCase()));
+    // Cari di data allProducts
+    const product = allProducts.find(p => p.product_name.toLowerCase().includes(prodName.toLowerCase()));
     if (!product) return 0;
 
     let additionalPrice = 0;
@@ -192,69 +203,75 @@ export const Chatbot = () => {
   };
 
   const confirmPayment = async () => {
-  if (!pendingOrderData || !paymentInput) return;
+    if (!pendingOrderData || !paymentInput) return;
 
-  setIsProcessingPayment(true);
-  await new Promise(resolve => setTimeout(resolve, 1500));
+    setIsProcessingPayment(true);
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
-  const product = products.find(p =>
-    p.product_name.toLowerCase().includes(pendingOrderData.product.toLowerCase())
-  ) || products[0];
+    // Cari produk dari data allProducts
+    const product = allProducts.find(p =>
+      p.product_name.toLowerCase().includes(pendingOrderData.product.toLowerCase())
+    ) || allProducts[0];
 
-  // Kalkulasi harga final
-  let additionalPrice = 0;
-  if (pendingOrderData.variant && product.variants) {
-    product.variants.forEach(v => {
-      v.options.forEach(opt => {
-        if (pendingOrderData.variant.includes(opt.name)) {
-          additionalPrice += (opt.option_price || 0);
-        }
+    if (!product) {
+       addChatMessage({ role: 'assistant', content: "❌ Produk tidak ditemukan dalam database." });
+       setIsProcessingPayment(false);
+       return;
+    }
+
+    // Kalkulasi harga final
+    let additionalPrice = 0;
+    if (pendingOrderData.variant && product.variants) {
+      product.variants.forEach(v => {
+        v.options.forEach(opt => {
+          if (pendingOrderData.variant.includes(opt.name)) {
+            additionalPrice += (opt.option_price || 0);
+          }
+        });
       });
-    });
-  }
+    }
 
-  const finalUnitPrice = product.price + additionalPrice;
-  const finalTotalPrice = finalUnitPrice * pendingOrderData.qty;
-  const orderId = `ORD-${Date.now().toString().slice(-6)}`;
+    const finalUnitPrice = product.price + additionalPrice;
+    const finalTotalPrice = finalUnitPrice * pendingOrderData.qty;
+    const orderId = `ORD-${Date.now().toString().slice(-6)}`;
 
-  // PASTIKAN PROPERTI INI SAMA DENGAN KOLOM SUPABASE
-  const newOrder: Order = {
-    id: orderId,
-    id_product: product.id,
-    seller_id: product.user_id,
-    product_name: product.product_name,
-    product_price: finalUnitPrice,
-    quantity: pendingOrderData.qty,
-    total_price: finalTotalPrice,
-    buyer_name: pendingOrderData.name,
-    buyer_phone: pendingOrderData.phone,
-    buyer_location: pendingOrderData.location || "Alamat tidak terdeteksi",
-    selected_variants: pendingOrderData.variant || "-",
-    payment_method: selectedMethod,
-    status: 'Packaging',
-    created_at: new Date().toISOString(),
-    variant: ''
+    const newOrder: Order = {
+      id: orderId,
+      id_product: product.id,
+      seller_id: product.user_id, // Menggunakan user_id pemilik asli produk
+      product_name: product.product_name,
+      product_price: finalUnitPrice,
+      quantity: pendingOrderData.qty,
+      total_price: finalTotalPrice,
+      buyer_name: pendingOrderData.name,
+      buyer_phone: pendingOrderData.phone,
+      buyer_location: pendingOrderData.location || "Alamat tidak terdeteksi",
+      selected_variants: pendingOrderData.variant || "-",
+      payment_method: selectedMethod,
+      status: 'Packaging',
+      created_at: new Date().toISOString(),
+      variant: ''
+    };
+
+    try {
+      await createOrder(newOrder);
+
+      addChatMessage({
+        role: 'assistant',
+        content: `### ✅ Pembayaran Berhasil!\n\nPembayaran via **${selectedMethod}** telah diverifikasi.\n\n**Detail Pesanan:**\n- **Order ID:** \`${orderId}\` \n- **Produk:** ${product.product_name}\n- **Total:** Rp${finalTotalPrice.toLocaleString('id-ID')}\n\nTerima kasih! Pesananmu sedang kami siapkan.`
+      });
+    } catch (err) {
+      console.error("Error saving order:", err);
+      addChatMessage({
+        role: 'assistant',
+        content: "❌ Maaf, pesanan gagal disimpan ke database. Silakan hubungi admin."
+      });
+    } finally {
+      setIsProcessingPayment(false);
+      setShowPaymentModal(false);
+      setPendingOrderData(null);
+    }
   };
-
-  try {
-    await createOrder(newOrder);
-
-    addChatMessage({
-      role: 'assistant',
-      content: `### ✅ Pembayaran Berhasil!\n\nPembayaran via **${selectedMethod}** telah diverifikasi.\n\n**Detail Pesanan:**\n- **Order ID:** \`${orderId}\` \n- **Produk:** ${product.product_name}\n- **Total:** Rp${finalTotalPrice.toLocaleString('id-ID')}\n\nTerima kasih! Pesananmu sedang kami siapkan.`
-    });
-  } catch (err) {
-    console.error("Error saving order:", err);
-    addChatMessage({
-      role: 'assistant',
-      content: "❌ Maaf, pesanan gagal disimpan ke database. Silakan hubungi admin."
-    });
-  } finally {
-    setIsProcessingPayment(false);
-    setShowPaymentModal(false);
-    setPendingOrderData(null);
-  }
-};
 
   if (!isChatOpen) return null;
 
@@ -399,7 +416,7 @@ export const Chatbot = () => {
           </div>
         )}
 
-        {/* Payment Selection UI - INI YANG MEMUNCULKAN FORM PEMBAYARAN */}
+        {/* Payment Selection UI */}
         {pendingOrderData && !showPaymentModal && (
           <div className="bg-white p-6 rounded-[2.5rem] shadow-2xl border-2 border-blue-600 mt-2 animate-in zoom-in-95">
             <div className="flex items-center gap-3 mb-4">
