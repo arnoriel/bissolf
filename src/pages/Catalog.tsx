@@ -7,10 +7,10 @@ import {
 import type { Product, Order } from '../types';
 import { getImageUrl, getProfileImageUrl } from '../lib/supabase';
 import { supabase } from '../lib/supabase';
+import { useStore } from '../context/StoreContext'; // Import useStore
 
 interface CatalogProps {
-  products: Product[];
-  orders: Order[];
+  orders: Order[]; // products dihilangkan dari props karena kita ambil langsung via getAllProducts
   onBack: () => void;
   onOrder: (product: Product & { selectedVariant?: string; sellerProfile?: any }) => void;
 }
@@ -24,17 +24,33 @@ interface ProductWithSeller extends Product {
   };
 }
 
-export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => {
+export const Catalog = ({ orders, onBack, onOrder }: CatalogProps) => {
+  const { getAllProducts } = useStore(); // Ambil fungsi dari context
+  const [rawProducts, setRawProducts] = useState<Product[]>([]); // State untuk menampung semua produk
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<ProductWithSeller | null>(null);
   const [productsWithSellers, setProductsWithSellers] = useState<ProductWithSeller[]>([]);
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
   const [currentBanner, setCurrentBanner] = useState(0);
+  const [isDataLoading, setIsDataLoading] = useState(true);
 
-  // Fetch seller info untuk setiap produk
+  // 1. Fetch seluruh produk (Tanpa Auth)
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      setIsDataLoading(true);
+      const data = await getAllProducts();
+      setRawProducts(data);
+      setIsDataLoading(false);
+    };
+    fetchInitialData();
+  }, [getAllProducts]);
+
+  // 2. Fetch seller info untuk setiap produk yang berhasil di-load
   useEffect(() => {
     const fetchSellers = async () => {
-      const userIds = [...new Set(products.map(p => p.user_id))];
+      if (rawProducts.length === 0) return;
+
+      const userIds = [...new Set(rawProducts.map(p => p.user_id))];
       if (userIds.length === 0) return;
 
       const { data: profiles } = await supabase
@@ -47,7 +63,7 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
         return acc;
       }, {} as Record<string, any>);
 
-      const enriched = products.map(product => ({
+      const enriched = rawProducts.map(product => ({
         ...product,
         seller: profileMap[product.user_id]
       }));
@@ -56,7 +72,7 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
     };
 
     fetchSellers();
-  }, [products]);
+  }, [rawProducts]);
 
   const banners = [
     {
@@ -217,11 +233,17 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
-                {topPicks.map(product => (
-                  <ProductCard key={product.id} product={product} onClick={() => handleOpenProduct(product)} isTopPick />
-                ))}
-              </div>
+              {isDataLoading ? (
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
+                  {[1,2,3,4].map(i => <div key={i} className="h-[300px] md:h-[450px] bg-gray-200 animate-pulse rounded-[3.5rem]" />)}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
+                  {topPicks.map(product => (
+                    <ProductCard key={product.id} product={product} onClick={() => handleOpenProduct(product)} isTopPick />
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -231,7 +253,11 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
           </div>
 
           {/* MAIN CATALOG */}
-          {Object.keys(groupedProducts).length > 0 ? (
+          {isDataLoading ? (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-10">
+              {[1,2,3,4,5,6].map(i => <div key={i} className="h-[300px] md:h-[450px] bg-gray-200 animate-pulse rounded-[3.5rem]" />)}
+            </div>
+          ) : Object.keys(groupedProducts).length > 0 ? (
             <div className="space-y-12 md:space-y-24">
               {Object.entries(groupedProducts).map(([category, items]) => (
                 <div key={category} className="animate-in fade-in slide-in-from-bottom-10 px-1">
@@ -263,7 +289,7 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
         </div>
       </section>
 
-      {/* DETAIL MODAL */}
+      {/* DETAIL MODAL (Tetap Sama) */}
       {selectedProduct && (
         <div className="fixed inset-0 z-[200] bg-gray-950/90 backdrop-blur-2xl flex items-end md:items-center justify-center overflow-hidden">
           <button 
@@ -432,7 +458,7 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
   );
 };
 
-// ProductCard component with seller info
+// ProductCard component (Tetap Sama)
 const ProductCard = ({ product, onClick, isTopPick }: { product: ProductWithSeller, onClick: () => void, isTopPick?: boolean }) => (
   <div 
     key={product.id} 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
 import { 
   Search as SearchIcon, 
@@ -62,7 +62,13 @@ const CATEGORY_OPTIONS = [
 
 
 export const ProductsPage = () => {
-  const { products, addProduct, updateProduct, deleteProduct } = useStore();
+    const { 
+    products, 
+    addProduct, 
+    updateProduct, 
+    deleteProduct,
+    getMyProducts
+  } = useStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,6 +78,10 @@ export const ProductsPage = () => {
   // PAGINATION STATE
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
+
+    useEffect(() => {
+    getMyProducts();
+  }, [getMyProducts]);
 
   // Form State - Mendukung detail variant option lengkap
   const [formData, setFormData] = useState<Partial<Product> & { variants: FormVariant[] }>({

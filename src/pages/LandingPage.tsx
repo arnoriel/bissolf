@@ -19,7 +19,7 @@ import { Catalog } from './Catalog';
 
 export const LandingPage = () => {
   // Destructure orders juga dari store untuk dikirim ke Catalog nanti
-  const { products, orders, initiateOrderFromLanding, toggleChat } = useStore();
+  const { orders, initiateOrderFromLanding, toggleChat } = useStore();
   const [view, setView] = useState<'home' | 'catalog'>('home');
 
   // Reset scroll ke atas setiap kali ganti view
@@ -208,7 +208,6 @@ export const LandingPage = () => {
           renderHome()
         ) : (
           <Catalog 
-            products={products}
             orders={orders}
             onBack={() => setView('home')}
             onOrder={initiateOrderFromLanding}
