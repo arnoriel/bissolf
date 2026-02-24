@@ -5,15 +5,29 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Helper: cek apakah Supabase sudah dikonfigurasi
 export const isSupabaseConfigured = () => {
     return supabaseUrl !== '' && supabaseAnonKey !== '';
 };
 
-export const getImageUrl = (path: string) => {
+export const getImageUrl = (bucket: string, path: string) => {
+  if (!path) return undefined;
+  if (path.startsWith('http')) return path;
+  
   const { data } = supabase.storage
-    .from('image')
+    .from(bucket)
     .getPublicUrl(path);
 
   return data.publicUrl;
+};
+
+// Helper untuk profile images
+export const getProfileImageUrl = (path: string | undefined) => {
+  if (!path) return undefined;
+  return getImageUrl('profiles', path);
+};
+
+// Helper untuk background images
+export const getBackgroundImageUrl = (path: string | undefined) => {
+  if (!path) return undefined;
+  return getImageUrl('backgrounds', path);
 };

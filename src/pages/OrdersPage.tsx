@@ -86,7 +86,7 @@ export const OrdersPage = () => {
   const getProductImage = (productId: string): string | undefined => {
     const product = products.find(p => p.id === productId);
     if (!product?.image) return undefined;
-      return getImageUrl(product.image);
+    return getImageUrl('image', product.image);
   };
 
   return (

@@ -2,26 +2,61 @@ import { useState, useMemo, useEffect } from 'react';
 import { 
   Search, ArrowLeft, 
   Star, ShoppingCart, X, ZapOff, Flame, Layers, 
-  Sparkles, TrendingUp
+  Sparkles, TrendingUp, Store
 } from 'lucide-react';
 import type { Product, Order } from '../types';
-import { getImageUrl } from '../lib/supabase';
-
+import { getImageUrl, getProfileImageUrl } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 
 interface CatalogProps {
   products: Product[];
   orders: Order[];
   onBack: () => void;
-  onOrder: (product: Product & { selectedVariant?: string }) => void;
+  onOrder: (product: Product & { selectedVariant?: string; sellerProfile?: any }) => void;
+}
+
+// Extended Product type with seller info
+interface ProductWithSeller extends Product {
+  seller?: {
+    store_name: string;
+    image_profile?: string;
+    ratings: number;
+  };
 }
 
 export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  
+  const [selectedProduct, setSelectedProduct] = useState<ProductWithSeller | null>(null);
+  const [productsWithSellers, setProductsWithSellers] = useState<ProductWithSeller[]>([]);
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
-  
   const [currentBanner, setCurrentBanner] = useState(0);
+
+  // Fetch seller info untuk setiap produk
+  useEffect(() => {
+    const fetchSellers = async () => {
+      const userIds = [...new Set(products.map(p => p.user_id))];
+      if (userIds.length === 0) return;
+
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, store_name, image_profile, ratings')
+        .in('id', userIds);
+
+      const profileMap = (profiles || []).reduce((acc, profile) => {
+        acc[profile.id] = profile;
+        return acc;
+      }, {} as Record<string, any>);
+
+      const enriched = products.map(product => ({
+        ...product,
+        seller: profileMap[product.user_id]
+      }));
+
+      setProductsWithSellers(enriched);
+    };
+
+    fetchSellers();
+  }, [products]);
 
   const banners = [
     {
@@ -63,7 +98,7 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
       return acc;
     }, {} as Record<string, number>);
 
-    return [...products]
+    return [...productsWithSellers]
       .sort((a, b) => {
         const countA = orderCounts[a.id] || 0;
         const countB = orderCounts[b.id] || 0;
@@ -71,22 +106,23 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
         return countB - countA;
       })
       .slice(0, 4);
-  }, [products, orders]);
+  }, [productsWithSellers, orders]);
 
   const groupedProducts = useMemo(() => {
-    const filtered = products.filter(p => 
+    const filtered = productsWithSellers.filter(p => 
       p.product_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.category.toLowerCase().includes(searchQuery.toLowerCase())
+      p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.seller?.store_name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     return filtered.reduce((acc, product) => {
       if (!acc[product.category]) acc[product.category] = [];
       acc[product.category].push(product);
       return acc;
-    }, {} as Record<string, Product[]>);
-  }, [products, searchQuery]);
+    }, {} as Record<string, ProductWithSeller[]>);
+  }, [productsWithSellers, searchQuery]);
 
-  const handleOpenProduct = (product: Product) => {
+  const handleOpenProduct = (product: ProductWithSeller) => {
     setSelectedProduct(product);
     setSelectedVariants({});
   };
@@ -101,7 +137,8 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
 
     onOrder({ 
       ...selectedProduct, 
-      selectedVariant: variantString 
+      selectedVariant: variantString,
+      sellerProfile: selectedProduct.seller
     });
     
     setSelectedProduct(null);
@@ -124,7 +161,7 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
               <h2 className="text-3xl md:text-7xl font-black text-gray-900 mb-3 md:mb-4 tracking-tighter leading-none uppercase">
                 Vault <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Collection</span>
               </h2>
-              <p className="text-gray-400 text-sm md:text-xl font-medium italic">Eksplorasi kurasi produk terbaik di Bissolf.</p>
+              <p className="text-gray-400 text-sm md:text-xl font-medium italic">Eksplorasi kurasi produk terbaik dari berbagai seller.</p>
             </div>
             
             <div className="relative w-full lg:w-[500px] group">
@@ -133,14 +170,13 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
               </div>
               <input 
                 type="text" 
-                placeholder="Cari koleksi eksklusif..."
+                placeholder="Cari produk atau toko..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-white border-none pl-12 md:pl-16 pr-8 py-4 md:py-7 rounded-xl md:rounded-[2.5rem] outline-none focus:ring-[8px] md:focus:ring-[15px] focus:ring-blue-500/5 transition-all font-bold shadow-[0_10px_30px_rgba(0,0,0,0.02)] text-gray-900 placeholder:text-gray-300 text-xs md:text-base"
               />
             </div>
           </div>
-
 
           {/* BANNER CAROUSEL */}
           <div className="relative mb-12 md:mb-24 overflow-hidden rounded-2xl md:rounded-[4rem] shadow-2xl group h-[280px] md:h-[450px]">
@@ -227,10 +263,9 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
         </div>
       </section>
 
-      {/* DETAIL MODAL - Diperbaiki: no empty space atas, close button di luar & kanan atas */}
+      {/* DETAIL MODAL */}
       {selectedProduct && (
         <div className="fixed inset-0 z-[200] bg-gray-950/90 backdrop-blur-2xl flex items-end md:items-center justify-center overflow-hidden">
-          {/* Tombol close DIPINDAH KE LUAR MODAL, kanan atas */}
           <button 
             onClick={() => setSelectedProduct(null)} 
             className="absolute top-4 right-4 md:top-6 md:right-6 z-[210] bg-white/90 backdrop-blur-md p-3 md:p-4 rounded-full shadow-lg hover:bg-red-50 hover:text-red-600 transition-all"
@@ -238,27 +273,12 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
             <X size={20} className="md:w-[28px] md:h-[28px]" />
           </button>
 
-          <div 
-            className="
-              bg-white w-full max-w-7xl 
-              h-[94vh] md:h-[90vh] lg:h-[88vh]
-              rounded-t-[2.5rem] md:rounded-[3.5rem] lg:rounded-[4rem] 
-              overflow-y-auto 
-              relative z-10 
-              animate-in slide-in-from-bottom md:zoom-in-95 duration-500 
-              custom-scrollbar
-              pt-0 md:pt-0
-            "
-          >
+          <div className="bg-white w-full max-w-7xl h-[94vh] md:h-[90vh] lg:h-[88vh] rounded-t-[2.5rem] md:rounded-[3.5rem] lg:rounded-[4rem] overflow-y-auto relative z-10 animate-in slide-in-from-bottom md:zoom-in-95 duration-500 custom-scrollbar pt-0 md:pt-0">
             <div className="grid grid-cols-1 lg:grid-cols-2 min-h-full">
-              {/* Image Section - langsung dari atas, no padding atas */}
+              {/* Image Section */}
               <div className="relative h-[40vh] sm:h-[50vh] lg:h-full overflow-hidden group order-1 lg:order-1">
                 <img 
-                  src={
-                    selectedProduct.image
-                      ? getImageUrl(selectedProduct.image)
-                      : '/placeholder.png'
-                  }
+                  src={selectedProduct.image ? getImageUrl('image', selectedProduct.image) : '/placeholder.png'}
                   className="w-full h-full object-cover" 
                   alt={selectedProduct.product_name} 
                 />
@@ -272,6 +292,33 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
               
               {/* Detail Content */}
               <div className="p-6 sm:p-8 md:p-10 lg:p-12 xl:p-16 flex flex-col order-2 lg:order-2">
+                
+                {/* Seller Info */}
+                {selectedProduct.seller && (
+                  <div className="flex items-center gap-3 mb-6 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                    <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden border-2 border-white shadow-sm">
+                      {selectedProduct.seller.image_profile ? (
+                        <img 
+                          src={getProfileImageUrl(selectedProduct.seller.image_profile)}
+                          alt={selectedProduct.seller.store_name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-600">
+                          <Store size={20} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-bold text-gray-900 text-sm">{selectedProduct.seller.store_name}</p>
+                      <div className="flex items-center gap-1 text-yellow-400">
+                        <Star size={12} fill="currentColor" />
+                        <span className="text-xs font-bold text-gray-600">{selectedProduct.seller.ratings}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-3 md:gap-4 mb-6 md:mb-8">
                   <span className="bg-blue-50 text-blue-600 text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] px-3 md:px-5 py-1.5 md:py-2 rounded-full border border-blue-100">
                     {selectedProduct.category}
@@ -337,11 +384,7 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
                                 {hasImage && (
                                   <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-lg md:rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
                                     <img 
-                                      src={
-                                        option.image
-                                          ? getImageUrl(option.image)
-                                          : undefined
-                                      }
+                                      src={option.image ? getImageUrl('image', option.image) : undefined}
                                       alt={optionName}
                                       className="w-full h-full object-cover"
                                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -355,7 +398,6 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
                                     {optionName}
                                   </span>
                                   
-                                  {/* LOGIK BARU: Tampilkan harga jika > 0 */}
                                   {priceAddon > 0 && (
                                     <span className="text-[8px] md:text-[10px] font-black text-blue-600 mt-0.5">
                                       + Rp {priceAddon.toLocaleString()}
@@ -390,8 +432,8 @@ export const Catalog = ({ products, orders, onBack, onOrder }: CatalogProps) => 
   );
 };
 
-// ProductCard component tetap sama
-const ProductCard = ({ product, onClick, isTopPick }: { product: Product, onClick: () => void, isTopPick?: boolean }) => (
+// ProductCard component with seller info
+const ProductCard = ({ product, onClick, isTopPick }: { product: ProductWithSeller, onClick: () => void, isTopPick?: boolean }) => (
   <div 
     key={product.id} 
     className={`group relative bg-white rounded-2xl md:rounded-[3.5rem] p-3 md:p-5 border transition-all duration-700 cursor-pointer overflow-hidden
@@ -402,11 +444,7 @@ const ProductCard = ({ product, onClick, isTopPick }: { product: Product, onClic
   >
     <div className="relative overflow-hidden rounded-[1.2rem] md:rounded-[2.8rem] h-[180px] md:h-[340px] mb-4 md:mb-8">
       <img 
-        src={
-          product.image
-            ? getImageUrl(product.image)
-            : '/placeholder.png'
-        }
+        src={product.image ? getImageUrl('image', product.image) : '/placeholder.png'}
         alt={product.product_name} 
         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[1.5s] ease-out" 
       />
@@ -430,6 +468,32 @@ const ProductCard = ({ product, onClick, isTopPick }: { product: Product, onClic
     </div>
     
     <div className="px-1 md:px-4">
+      {/* Seller Info */}
+      {product.seller && (
+        <div className="flex items-center gap-2 mb-2 md:mb-3">
+          <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-gray-100 overflow-hidden">
+            {product.seller.image_profile ? (
+              <img 
+                src={getProfileImageUrl(product.seller.image_profile)}
+                alt={product.seller.store_name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-600 text-[8px] md:text-[10px]">
+                <Store size={10} />
+              </div>
+            )}
+          </div>
+          <span className="text-[9px] md:text-[11px] font-bold text-gray-500 truncate flex-1">
+            {product.seller.store_name}
+          </span>
+          <div className="flex items-center gap-0.5 text-yellow-400">
+            <Star size={10} fill="currentColor" />
+            <span className="text-[9px] md:text-[10px] font-bold text-gray-600">{product.seller.ratings}</span>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-2 md:mb-4">
         <span className="bg-gray-50 text-gray-400 text-[7px] md:text-[9px] font-black uppercase tracking-[0.1em] md:tracking-[0.2em] px-2 md:px-4 py-1 md:py-1.5 rounded-full group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
           {product.category}

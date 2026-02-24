@@ -221,6 +221,7 @@ export const Chatbot = () => {
   const newOrder: Order = {
     id: orderId,
     id_product: product.id,
+    seller_id: product.user_id,
     product_name: product.product_name,
     product_price: finalUnitPrice,
     quantity: pendingOrderData.qty,

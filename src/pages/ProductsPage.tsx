@@ -242,9 +242,10 @@ export const ProductsPage = () => {
         options: v.options.filter(o => o.name.trim() !== '')
       }));
 
-    const finalData = {
+    const finalData: Product = {
       ...formData,
       id: editingProduct ? editingProduct.id : crypto.randomUUID(),
+      user_id: editingProduct?.user_id,
       price: Number(formData.price),
       stocks: Number(formData.stocks),
       variants: cleanedVariants.length > 0 ? cleanedVariants : undefined,
@@ -303,7 +304,7 @@ export const ProductsPage = () => {
               <div className="w-20 h-20 bg-gray-100 rounded-xl shrink-0 overflow-hidden border border-gray-100">
                 <img 
                   src={product.image 
-                    ? getImageUrl(product.image) 
+                    ? getImageUrl('image', product.image) 
                     : '/placeholder.png'
                   }
                 />
@@ -363,7 +364,7 @@ export const ProductsPage = () => {
                         <img 
                           src={
                             product.image
-                              ? getImageUrl(product.image)
+                              ? getImageUrl('image', product.image)
                               : '/placeholder.png'
                           }
                           className="w-12 h-12 rounded-2xl object-cover bg-gray-100 shadow-sm"
@@ -390,7 +391,7 @@ export const ProductsPage = () => {
                                     <div className="flex items-center gap-1">
                                     {opt.image && (
                                       <img
-                                        src={getImageUrl(opt.image)}
+                                        src={getImageUrl('image', opt.image)}
                                         className="w-4 h-4 rounded object-cover"
                                         alt=""
                                       />
@@ -609,7 +610,7 @@ export const ProductsPage = () => {
                   {formData.image && (
                     <div className="w-40 h-40 rounded-2xl overflow-hidden border border-gray-200">
                       <img
-                        src={getImageUrl(formData.image)}
+                        src={getImageUrl('image', formData.image)}
                         className="w-full h-full object-cover"
                         alt="Preview"
                       />
@@ -791,7 +792,7 @@ export const ProductsPage = () => {
                                 {option.image && (
                                   <div className="w-14 h-14 rounded-lg overflow-hidden border border-gray-200">
                                     <img
-                                      src={getImageUrl(option.image)}
+                                      src={getImageUrl('image', option.image)}
                                       className="w-full h-full object-cover"
                                       alt=""
                                     />
